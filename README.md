@@ -1530,8 +1530,8 @@ This project is licensed under the **MIT License** — see [LICENSE](./LICENSE) 
 
 ## 👥 Authors
 
-- **[Your Name]** — *Project Lead / Full-Stack Development* — [@KL2300030695](https://github.com/KL2300030695)
-- **[Teammate Name]** — *Role* — [github.com/their-handle](https://github.com/their-handle)
+- **[V.Subhash]** — [@KL2300030695](https://github.com/KL2300030695)
+- **[Teammate Name]** — [github.com/their-handle](https://github.com/their-handle)
 
 *Built for Tech Mahindra's "Code the Future" hackathon — Challenge 4: Contract & SOW Risk Analyzer.*
 
