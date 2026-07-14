@@ -16,26 +16,26 @@ export default function ClauseCard({
   const breadcrumb = siblingClauses ? buildBreadcrumb(clause, siblingClauses) : null
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-md border border-ledger bg-white p-4">
+      <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-body">
         {docLabel} &middot; Page{' '}
         {clause.page_start === clause.page_end ? clause.page_start : `${clause.page_start}-${clause.page_end}`}
       </p>
       {breadcrumb && breadcrumb.length > 0 ? (
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-1.5 text-xs text-slate-body">
           {breadcrumb.map((b, i) => (
             <span key={b.sectionNumber}>
-              {i > 0 && <span className="mx-1">&rsaquo;</span>}
+              {i > 0 && <span className="mx-1 text-ledger">&rsaquo;</span>}
               {b.sectionNumber}
               {b.heading ? ` ${b.heading}` : ''}
             </span>
           ))}
         </p>
       ) : (
-        <p className="mt-1 text-xs text-slate-400">Section {clause.section_number ?? '—'}</p>
+        <p className="mt-1.5 text-xs text-slate-body">Section {clause.section_number ?? '—'}</p>
       )}
-      <h3 className="mt-1 text-base font-semibold text-slate-900">{clause.heading}</h3>
-      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{clause.text}</p>
+      <h3 className="mt-1.5 font-serif text-base font-medium text-ink">{clause.heading}</h3>
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{clause.text}</p>
     </div>
   )
 }

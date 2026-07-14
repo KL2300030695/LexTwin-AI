@@ -8,6 +8,14 @@ networkx==3.3
 diff-match-patch==20230430
 firebase-admin==6.5.0
 anthropic==0.116.0
+google-genai==2.11.0
+
+# Chat with Contract (RAG): local embeddings + vector search, not an AI
+# provider call -- retrieval is deterministic, only answer synthesis uses
+# the configured AI provider (see app/services/chat_service.py). Heavy
+# (pulls in PyTorch, ~1.3GB model download on first use).
+sentence-transformers==5.6.0
+faiss-cpu==1.14.3
 pytest==8.3.3
 reportlab==4.2.2
 python-dotenv==1.0.1

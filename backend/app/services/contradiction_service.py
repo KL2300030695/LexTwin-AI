@@ -2,15 +2,15 @@
 
 Pipeline: align clauses by topic (deterministic, app/contradiction), skip any
 pair where either clause is blocked by the Phase 4 missing-reference check
-(refuse to evaluate rather than guess), then ask Claude to judge the
-remaining pairs (app/services/claude_client).
+(refuse to evaluate rather than guess), then ask the configured AI provider
+to judge the remaining pairs (app/services/ai_client, Claude or Gemini).
 """
 from __future__ import annotations
 
 from app.completeness import check_completeness
 from app.contradiction.topic_alignment import align_clauses
 from app.models.contradiction import ContradictionAnalysis, ContradictionResult, ContradictionStatus
-from app.services.claude_client import ClaudeClientError, check_contradiction
+from app.services.ai_client import AIClientError, check_contradiction
 from app.services.document_service import get_document
 
 
@@ -59,7 +59,7 @@ def analyze_contradictions(msa_doc_id: str, sow_doc_id: str) -> ContradictionAna
                 sow_heading=pair.sow_clause.heading or pair.sow_clause.section_number or "",
                 sow_text=pair.sow_clause.text,
             )
-        except ClaudeClientError as e:
+        except AIClientError as e:
             results.append(
                 ContradictionResult(
                     topic=pair.topic,

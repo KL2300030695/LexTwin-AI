@@ -6,6 +6,7 @@ import {
   checkCompleteness,
   decideAuditEntry,
   extractObligations,
+  generateReport,
   getDocument,
   listAuditEntries,
 } from '../api/client'
@@ -15,6 +16,7 @@ import type { CompletenessAnalysis } from '../types/completeness'
 import type { ContradictionAnalysis } from '../types/contradiction'
 import type { AuditEntry } from '../types/audit'
 import type { Obligation } from '../types/obligation'
+import type { ReportRequest } from '../types/report'
 import { buildRiskFlags, type RiskFlag } from '../lib/riskFlags'
 import RiskFlagsList from '../components/RiskFlagsList'
 import RiskDetailPanel from '../components/RiskDetailPanel'
@@ -22,8 +24,9 @@ import DependencyGraph from '../components/DependencyGraph'
 import ClauseCard from '../components/ClauseCard'
 import AuditTrailPanel from '../components/AuditTrailPanel'
 import ObligationsPanel from '../components/ObligationsPanel'
+import ChatPanel from '../components/ChatPanel'
 
-type Tab = 'risks' | 'graph' | 'obligations' | 'audit'
+type Tab = 'risks' | 'graph' | 'obligations' | 'chat' | 'audit'
 
 export default function WorkspacePage() {
   const { msaId, sowId } = useParams<{ msaId: string; sowId: string }>()
@@ -38,6 +41,8 @@ export default function WorkspacePage() {
 
   const [loading, setLoading] = useState(true)
   const [contradictionError, setContradictionError] = useState<string | null>(null)
+  const [reportError, setReportError] = useState<string | null>(null)
+  const [downloadingReport, setDownloadingReport] = useState(false)
 
   const [tab, setTab] = useState<Tab>('risks')
   const [selectedFlag, setSelectedFlag] = useState<RiskFlag | null>(null)
@@ -124,51 +129,114 @@ export default function WorkspacePage() {
     refreshAudit()
   }
 
-  if (!msaId || !sowId) return <p className="p-8 text-red-600">Missing document ids.</p>
-  if (loading) return <p className="p-8 text-slate-500">Analyzing documents…</p>
+  async function handleDownloadReport() {
+    if (!msaDoc || !sowDoc) return
+    setDownloadingReport(true)
+    setReportError(null)
+    try {
+      const payload: ReportRequest = {
+        msa_filename: msaDoc.filename,
+        sow_filename: sowDoc.filename,
+        risk_flags: riskFlags.map((f) => ({
+          id: f.id,
+          kind: f.kind,
+          severity: f.severity,
+          title: f.title,
+          description: f.description,
+          clause_ids: f.clauseIds,
+          confidence: f.contradiction?.confidence ?? null,
+        })),
+        obligations,
+        audit_entries: auditEntries,
+      }
+      const blob = await generateReport(payload)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${msaDoc.filename}_vs_${sowDoc.filename}_risk_report.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setReportError(e instanceof Error ? e.message : 'Failed to generate report.')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
+
+  if (!msaId || !sowId) return <p className="p-8 text-sm text-redline">Missing document ids.</p>
+  if (loading) return <p className="p-8 text-sm text-slate-body">Analyzing documents&hellip;</p>
 
   const selectedGraphClause = selectedClauseId ? clauseLookup.get(selectedClauseId) : null
 
+  const TAB_META: Record<Tab, { label: string; count: number | null }> = {
+    risks: { label: 'Risk Flags', count: riskFlags.length },
+    graph: { label: 'Dependency Graph', count: null },
+    obligations: { label: 'Obligations', count: obligations.length },
+    chat: { label: 'Chat', count: null },
+    audit: { label: 'Audit Trail', count: auditEntries.length },
+  }
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <Link to="/" className="text-sm text-slate-500 hover:underline">
-        ← Back to documents
-      </Link>
-      <h1 className="mt-2 text-2xl font-bold text-slate-900">
-        {msaDoc?.filename} <span className="text-slate-400">vs</span> {sowDoc?.filename}
-      </h1>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1 rounded-sm font-mono text-xs text-slate-body transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2"
+          >
+            &larr; back to documents
+          </Link>
+          <h1 className="mt-2 font-serif text-2xl font-medium text-ink sm:text-3xl">
+            {msaDoc?.filename} <span className="px-1 text-base font-normal text-slate-body">vs</span> {sowDoc?.filename}
+          </h1>
+        </div>
+        <button
+          onClick={handleDownloadReport}
+          disabled={downloadingReport}
+          className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-sm border border-ledger px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ledger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-0"
+        >
+          {downloadingReport ? 'Preparing report…' : 'Download Report'}
+        </button>
+      </div>
 
       {contradictionError && (
-        <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="mt-3 rounded-md border border-seal-amber/30 bg-seal-amber-tint px-3.5 py-3 text-sm text-seal-amber">
           {contradictionError}
         </div>
       )}
 
-      <div className="mt-6 flex gap-2 border-b border-slate-200">
-        {(['risks', 'graph', 'obligations', 'audit'] as Tab[]).map((t) => (
+      {reportError && (
+        <div className="mt-3 rounded-md border border-redline/30 bg-redline-tint px-3.5 py-3 text-sm text-redline">
+          {reportError}
+        </div>
+      )}
+
+      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-ledger">
+        {(['risks', 'graph', 'obligations', 'chat', 'audit'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium capitalize ${
-              tab === t ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 ${
+              tab === t ? 'border-ink text-ink' : 'border-transparent text-slate-body hover:text-ink'
             }`}
           >
-            {t === 'risks'
-              ? `Risk Flags (${riskFlags.length})`
-              : t === 'graph'
-                ? 'Dependency Graph'
-                : t === 'obligations'
-                  ? `Obligations (${obligations.length})`
-                  : `Audit Trail (${auditEntries.length})`}
+            {TAB_META[t].label}
+            {TAB_META[t].count !== null && (
+              <span className="rounded-sm bg-ledger-soft px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-ink-soft">
+                {TAB_META[t].count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       <div className="mt-6">
         {tab === 'risks' && (
-          <div className="grid gap-6 md:grid-cols-[320px_1fr]">
+          <div className="grid gap-5 md:grid-cols-[320px_1fr]">
             <RiskFlagsList flags={riskFlags} selectedId={selectedFlag?.id ?? null} onSelect={setSelectedFlag} />
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="rounded-md border border-ledger bg-white p-4 sm:p-5">
               <RiskDetailPanel
                 flag={selectedFlag}
                 clauseLookup={clauseLookup}
@@ -194,6 +262,8 @@ export default function WorkspacePage() {
         )}
 
         {tab === 'obligations' && <ObligationsPanel obligations={obligations} clauseLookup={clauseLookup} />}
+
+        {tab === 'chat' && <ChatPanel docIds={[msaId, sowId]} clauseLookup={clauseLookup} />}
 
         {tab === 'audit' && <AuditTrailPanel entries={auditEntries} onDecide={handleDecide} />}
       </div>

@@ -1,9 +1,10 @@
 """Phase 6: redline generation for a single flagged clause.
 
 Given a clause that some upstream check (a Phase 5 contradiction, a Phase 3
-blanket override, or anything else) flagged as risky, ask Claude for fallback
-replacement language, then compute a deterministic word-level diff between
-the original and suggested text (app/redline/diffing.py -- not the LLM).
+blanket override, or anything else) flagged as risky, ask the configured AI
+provider for fallback replacement language (app/services/ai_client, Claude or
+Gemini), then compute a deterministic word-level diff between the original
+and suggested text (app/redline/diffing.py -- not the LLM).
 """
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ import re
 from app.models.redline import RedlineSuggestion
 from app.models.schema import Clause, ParsedDocument
 from app.redline.diffing import diff_to_markdown, word_level_diff
-from app.services.claude_client import generate_fallback_language
+from app.services.ai_client import generate_fallback_language
 from app.services.document_service import get_document
 
 _WHITESPACE_RUN_RE = re.compile(r"\s+")

@@ -35,6 +35,15 @@ export function riskFlagLabel(kind: RiskFlagKind): string {
   return KIND_LABEL[kind]
 }
 
+/** Severity is genuinely 3-tier here (unlike the upload screen's "color only
+ * for deviations" rule) because triage is this screen's whole job -- but
+ * still only two accent colors: low gets a neutral outline, not a color. */
+export const SEVERITY_STYLE: Record<RiskSeverity, { tint: string; text: string; border: string; dot: string }> = {
+  high: { tint: 'bg-redline-tint', text: 'text-redline', border: 'border-redline/30', dot: 'bg-redline' },
+  medium: { tint: 'bg-seal-amber-tint', text: 'text-seal-amber', border: 'border-seal-amber/30', dot: 'bg-seal-amber' },
+  low: { tint: 'bg-white', text: 'text-slate-body', border: 'border-ledger', dot: 'bg-slate-body/40' },
+}
+
 export function buildRiskFlags(
   graph: GraphAnalysis | null,
   completeness: CompletenessAnalysis | null,

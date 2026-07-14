@@ -7,6 +7,8 @@ import type { RedlineSuggestion } from '../types/redline'
 import type { AuditDecision, AuditEntry, AuditEntryCreate } from '../types/audit'
 import type { ReferenceCategory, TopicRule } from '../types/playbook'
 import type { Obligation } from '../types/obligation'
+import type { ReportRequest } from '../types/report'
+import type { ChatRequest, ChatResponse } from '../types/chat'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -110,5 +112,15 @@ export async function getPlaybookReferenceCategories(): Promise<ReferenceCategor
 
 export async function extractObligations(docIds: string[]): Promise<Obligation[]> {
   const { data } = await api.post<Obligation[]>('/obligations/extract', { doc_ids: docIds })
+  return data
+}
+
+export async function generateReport(payload: ReportRequest): Promise<Blob> {
+  const { data } = await api.post<Blob>('/report/generate', payload, { responseType: 'blob' })
+  return data
+}
+
+export async function askChat(payload: ChatRequest): Promise<ChatResponse> {
+  const { data } = await api.post<ChatResponse>('/chat/ask', payload)
   return data
 }

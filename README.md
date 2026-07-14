@@ -11,7 +11,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](#)
 [![React](https://img.shields.io/badge/react-19-61DAFB?logo=react&logoColor=black)](#)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](#)
-[![Claude](https://img.shields.io/badge/AI-Claude%20Sonnet-D97757?logo=anthropic&logoColor=white)](#)
+[![AI](https://img.shields.io/badge/AI-Claude%20%7C%20Gemini-D97757?logo=anthropic&logoColor=white)](#)
 [![Firebase](https://img.shields.io/badge/Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)](#)
 [![Stars](https://img.shields.io/github/stars/KL2300030695/LexTwin-AI?style=social)](https://github.com/KL2300030695/LexTwin-AI/stargazers)
 
@@ -19,7 +19,7 @@
 
 ---
 
-> **A note on scope, up front.** This README documents exactly what is implemented and runnable today — every endpoint, every model, every module referenced below exists in the codebase and is covered by the test suite. Ambitious ideas that are **not** built yet (OCR, retrieval-augmented chat, a multi-agent review pipeline, negotiation simulation, etc.) are listed honestly in the [Roadmap](#-future-enhancements--roadmap) instead of being described as shipped. We'd rather you trust every word of this document than be impressed by half of it.
+> **A note on scope, up front.** This README documents exactly what is implemented and runnable today — every endpoint, every model, every module referenced below exists in the codebase and is covered by the test suite. Ambitious ideas that are **not** built yet (OCR, a multi-agent review pipeline, negotiation simulation, etc.) are listed honestly in the [Roadmap](#-future-enhancements--roadmap) instead of being described as shipped. We'd rather you trust every word of this document than be impressed by half of it.
 
 ---
 
@@ -41,6 +41,8 @@
   11. [AI Redline Generator](#11-ai-redline-generator)
   12. [Risk Flags Dashboard](#12-risk-flags-dashboard)
   13. [Human-in-the-Loop Audit Trail](#13-human-in-the-loop-audit-trail)
+  14. [Downloadable PDF Risk Report](#14-downloadable-pdf-risk-report)
+  15. [Chat with Contract (RAG)](#15-chat-with-contract-rag)
 - [Complete System Architecture](#-complete-system-architecture)
 - [Folder Structure](#-folder-structure)
 - [Installation](#-installation)
@@ -92,11 +94,11 @@ Neither approach models the actual *graph* of dependencies a real contract set e
 LexTwin AI treats an MSA/SOW pair as a **structured, explainable graph problem first, and an LLM judgment problem second — only where a judgment is genuinely required.**
 
 - **Parsing, hierarchy, cross-references, dependency graphs, cycle detection, obligation extraction, and the missing-reference guardrail are 100% deterministic** (regex + `networkx`), not LLM calls. Every edge in the dependency graph traces back to an exact character span in the source text. Every result is reproducible and unit-tested.
-- **The Claude API is invoked for exactly two narrow, genuinely judgment-shaped tasks**: (1) deciding whether a topic-aligned MSA clause and SOW clause materially contradict each other, and (2) drafting fallback redline language for a clause a reviewer has flagged. Both calls use structured output (a fixed Pydantic schema), so the model can't return anything the app doesn't already know how to render.
+- **The configured AI provider (Claude by default, or Gemini) is invoked for exactly two narrow, genuinely judgment-shaped tasks**: (1) deciding whether a topic-aligned MSA clause and SOW clause materially contradict each other, and (2) drafting fallback redline language for a clause a reviewer has flagged. Both calls use structured output (a fixed Pydantic schema), so the model can't return anything the app doesn't already know how to render — and both providers are asked the *exact same prompt* against the *exact same schema* (`app/services/ai_schemas.py`), so switching provider never changes what's being asked.
 - **A clause is never handed to the LLM for contradiction analysis if a document it depends on is missing from the upload set.** Instead of guessing, the system explicitly reports "cannot evaluate — missing reference," which is the closest deterministic analogue to a hallucination guard: it prevents the model from being asked to reason over content it was never given, by construction, before the API call is ever made.
 - The result is a **Contract Digital Twin**: an interactive, explorable graph of every clause and its dependencies, layered with deterministic risk flags (circular references, override conflicts, missing exhibits) and targeted AI risk flags (cross-document contradictions), all traceable back to source text and page numbers.
 
-This is a narrower, more rigorous scope than "AI that reads your contract and chats with you about it" — and that's the point. Every claim this tool makes about your contract is either a regex match you can inspect, a graph edge you can click on, or a Claude API call whose exact prompt and structured output are logged in the audit trail.
+This is a narrower, more rigorous scope than "AI that reads your contract and chats with you about it" — and that's the point. Every claim this tool makes about your contract is either a regex match you can inspect, a graph edge you can click on, or an AI provider call whose exact prompt and structured output are logged in the audit trail.
 
 ---
 
@@ -242,19 +244,19 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** The headline AI feature: automatically find places where an SOW clause materially conflicts with the MSA clause that's supposed to govern it — different payment terms, different liability caps, different SLA thresholds for the same metric.
 
-**How it works.** Clauses from the MSA and SOW are first aligned by topic (see [feature 8](#8-configurable-legal-playbook--topic-alignment)) using deterministic regex classification against clause headings — **not** an LLM call. For each topic where both documents have a matching clause, and neither clause is blocked by the [missing-reference guardrail](#6-missing-reference-refusal-guardrail), the pair is sent to Claude with a tightly scoped system prompt instructing it to judge *material* conflicts only (minor wording differences or a SOW adding detail without conflicting are explicitly **not** contradictions) and to return a structured `ContradictionJudgment` (`has_contradiction: bool`, `explanation: str`, `confidence: float`) via `client.messages.parse(..., output_format=ContradictionJudgment)` — the SDK validates the response against the Pydantic schema, so a malformed or off-topic model response simply can't reach the frontend.
+**How it works.** Clauses from the MSA and SOW are first aligned by topic (see [feature 8](#8-configurable-legal-playbook--topic-alignment)) using deterministic regex classification against clause headings — **not** an LLM call. For each topic where both documents have a matching clause, and neither clause is blocked by the [missing-reference guardrail](#6-missing-reference-refusal-guardrail), the pair is sent to the configured AI provider (`app/services/ai_client.py` routes to `claude_client.py` or `gemini_client.py` based on `AI_PROVIDER`) with a tightly scoped system prompt instructing it to judge *material* conflicts only (minor wording differences or a SOW adding detail without conflicting are explicitly **not** contradictions) and to return a structured `ContradictionJudgment` (`has_contradiction: bool`, `explanation: str`, `confidence: float`) — Claude via `client.messages.parse(..., output_format=ContradictionJudgment)`, Gemini via `response_schema=ContradictionJudgment` with `response_mime_type="application/json"`. Either way the SDK validates the response against the same Pydantic schema, so a malformed or off-topic model response simply can't reach the frontend.
 
 **Input.** `msa_doc_id`, `sow_doc_id`.
 
-**Processing.** Topic alignment → missing-reference gating → per-pair Claude call with structured output → status classification (`analyzed` / `cannot_evaluate` / `error`).
+**Processing.** Topic alignment → missing-reference gating → per-pair AI provider call with structured output → status classification (`analyzed` / `cannot_evaluate` / `error`).
 
 **Output.** A `ContradictionAnalysis`: `results[]` (one `ContradictionResult` per aligned topic, with `status`, `has_contradiction`, `explanation`, `confidence`), `contradictions_found` count.
 
-**Technologies used.** Anthropic Python SDK (`claude-sonnet-4-6`, structured output via `messages.parse`).
+**Technologies used.** Anthropic Python SDK (`claude-sonnet-4-6` by default) or Google Gen AI SDK (`gemini-flash-lite-latest` by default), selected at runtime by `AI_PROVIDER` — see [Environment Variables](#-environment-variables).
 
-**Benefits.** Scoped, auditable AI usage: one Claude call per aligned topic (not per-token document chat), each with a fixed, inspectable prompt and a schema-constrained response — every judgment is loggable to the [audit trail](#13-human-in-the-loop-audit-trail) with its exact rationale.
+**Benefits.** Scoped, auditable AI usage: one AI call per aligned topic (not per-token document chat), each with a fixed, inspectable prompt and a schema-constrained response — every judgment is loggable to the [audit trail](#13-human-in-the-loop-audit-trail) with its exact rationale. Both providers are asked identically, so switching `AI_PROVIDER` never changes the question, only who answers it.
 
-**Possible improvements.** Currently only compares an MSA against a *single* SOW at a time; doesn't yet aggregate contradictions across many SOWs under the same MSA in one pass; a failed Claude call for one topic degrades gracefully to `status: "error"` for that topic only, but doesn't currently retry with backoff beyond what the SDK already does.
+**Possible improvements.** Currently only compares an MSA against a *single* SOW at a time; doesn't yet aggregate contradictions across many SOWs under the same MSA in one pass; a failed AI call for one topic degrades gracefully to `status: "error"` for that topic only, but doesn't currently retry with backoff beyond what each SDK already does.
 
 ---
 
@@ -272,7 +274,7 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Technologies used.** Python `re`, Firestore-backed persistence via the same storage abstraction used everywhere else in the app.
 
-**Benefits.** Deliberately kept small and user-editable rather than auto-expanded from the reference datasets below — adding a new topic to the live config is an explicit, cost-aware decision by the user (every additional topic is a potential additional Claude API call per analysis), not something the app silently does on your behalf.
+**Benefits.** Deliberately kept small and user-editable rather than auto-expanded from the reference datasets below — adding a new topic to the live config is an explicit, cost-aware decision by the user (every additional topic is a potential additional AI provider call per analysis), not something the app silently does on your behalf.
 
 **Possible improvements.** Currently a single global config (not per-project/per-team); pattern authoring is regex-only with no visual builder yet.
 
@@ -329,15 +331,15 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** For any flagged clause, draft a minimal, ready-to-review replacement that resolves the stated risk — not a full rewrite, the smallest edit that fixes the problem.
 
-**How it works.** Given a `doc_id`/`clause_id` and the risk reason it was flagged for (optionally with a reference clause to align with, e.g. the MSA clause a contradicting SOW clause should match), Claude is prompted to preserve the original wording and structure as much as possible and produce a `FallbackSuggestion` (`suggested_text`, `rationale`) via the same structured-output pattern as contradiction detection. The original and suggested text are then fed through a **word-level diff** (`diff-match-patch`, using a character-encoding trick that maps whole words to Private-Use-Area Unicode characters before diffing, then maps back) to produce both a structured `DiffOp[]` and a ready-to-render `diff_markdown` string.
+**How it works.** Given a `doc_id`/`clause_id` and the risk reason it was flagged for (optionally with a reference clause to align with, e.g. the MSA clause a contradicting SOW clause should match), the configured AI provider is prompted to preserve the original wording and structure as much as possible and produce a `FallbackSuggestion` (`suggested_text`, `rationale`) via the same structured-output pattern as contradiction detection. The original and suggested text are then fed through a **word-level diff** (`diff-match-patch`, using a character-encoding trick that maps whole words to Private-Use-Area Unicode characters before diffing, then maps back) to produce both a structured `DiffOp[]` and a ready-to-render `diff_markdown` string.
 
 **Input.** `doc_id`, `clause_id`, `risk_reason`, optional `reference_doc_id`/`reference_clause_id`.
 
-**Processing.** Claude structured-output call → word-level diff computation → markdown rendering.
+**Processing.** AI provider structured-output call → word-level diff computation → markdown rendering.
 
 **Output.** A `RedlineSuggestion`: `original_text`, `suggested_text`, `rationale`, `diff[]`, `diff_markdown`.
 
-**Technologies used.** Anthropic SDK (structured output), `diff-match-patch`.
+**Technologies used.** Anthropic SDK or Google Gen AI SDK (structured output, whichever `AI_PROVIDER` selects), `diff-match-patch`.
 
 **Benefits.** Word-level (not line-level) diffing means a reviewer sees precisely which phrase changed, not a wall of red/green paragraph replacement — dramatically faster to review.
 
@@ -382,6 +384,46 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 **Benefits.** Produces exactly the kind of reviewable, timestamped decision log a legal/compliance team needs for sign-off — nothing in this app silently modifies a contract; every AI output requires an explicit human decision to be recorded as accepted.
 
 **Possible improvements.** No user authentication yet, so `reviewer` is a free-text field rather than a verified identity (see [Security](#-security)); no bulk-approve workflow for large risk lists.
+
+---
+
+### 14. Downloadable PDF Risk Report
+
+**Purpose.** A single "Download Report" button that turns the on-screen dashboard into a shareable PDF a reviewer can attach to an email, file with a deal record, or hand to someone who doesn't have access to the app.
+
+**How it works.** The frontend already holds every piece of the on-screen dashboard in state (the derived `RiskFlag[]`, `Obligation[]`, and `AuditEntry[]`) — clicking "Download Report" bundles exactly that data into a `ReportRequest` and posts it to the backend. Deliberately, the report endpoint **never re-runs graph/completeness analysis and never makes a new AI provider call** — it only formats data the app already computed, so the PDF always matches exactly what the reviewer saw on screen, costs nothing extra to generate, and can't drift from the live view due to LLM non-determinism on a second call. `reportlab`'s `platypus` layer (already a project dependency, previously only used to generate the synthetic sample contracts) renders the PDF, styled with the same color tokens as the web UI (redline/seal-amber for severity, ink/slate for text) so the report reads as the same document, not a generic export.
+
+**Input.** `msa_filename`, `sow_filename`, `risk_flags[]`, `obligations[]`, `audit_entries[]` — all already computed client-side.
+
+**Processing.** Pydantic validation → `reportlab` `SimpleDocTemplate`/`Table`/`Paragraph` rendering (Risk Summary → Contradiction Details → Obligations → Audit Trail → a human-review disclaimer) → in-memory PDF bytes, no temp files.
+
+**Output.** A `application/pdf` response with a `Content-Disposition: attachment` header; the browser triggers a native file download.
+
+**Technologies used.** `reportlab`, verified by round-tripping the generated PDF back through **PyMuPDF** (`fitz`) in tests — the same library used for Phase 2 parsing — to assert the actual rendered text matches what was sent in, not just "some bytes came out."
+
+**Benefits.** Zero additional AI cost per report (pure formatting); the report is provably consistent with the live dashboard since it's built from the same data, not a re-computation; reuses two dependencies the project already had for other reasons instead of adding a new PDF library.
+
+**Possible improvements.** No CSV/spreadsheet export yet (see [Roadmap](#-future-enhancements--roadmap)); no company letterhead/logo customization; no e-signature or watermarking for a "final" vs "draft" report distinction.
+
+---
+
+### 15. Chat with Contract (RAG)
+
+**Purpose.** Free-form Q&A over an MSA/SOW pair — ask anything, get a grounded answer with clickable citations back to the exact source clause(s), instead of manually reading through both documents to find the answer yourself.
+
+**How it works.** This is the one feature in the app where the relevant clauses genuinely can't be known in advance (any question is fair game), so it's the one place LexTwin AI uses **real embedding-based retrieval**: every analyzable clause in the document pair is embedded with **BAAI/bge-large-en-v1.5** (via `sentence-transformers`) and indexed in an in-process **FAISS** vector index (cosine similarity via L2-normalized inner product), cached per document pair. A question is embedded with BGE's documented query-instruction prefix, the top-8 most similar clauses are retrieved, and a numbered context block is built from them. That context — plus the running conversation history — is sent to the configured AI provider (Claude or Gemini, via the same `app/services/ai_client.py` dispatcher every other AI feature uses) with instructions to answer *using only the provided clauses* and to report which ones it relied on via a structured `cited_refs` field, not inline bracket markers in the prose. The backend maps those reference numbers back to real `clause_id`s before returning them, and a defensive regex strips any stray `[N]` markers a model includes anyway.
+
+**Input.** `doc_ids[]`, `question`, and `history[]` (prior turns, resent by the frontend each request — the backend itself is stateless per call).
+
+**Processing.** Embed clauses (once, cached) → embed question → FAISS top-k search → numbered context assembly → AI provider structured-output call → citation mapping → inline-marker cleanup.
+
+**Output.** A `ChatResponse`: `answer` (clean prose, no citation markers) and `citations[]` (each a real `clause_id` the frontend can look up and display via the same `ClauseCard` used everywhere else in the app).
+
+**Technologies used.** `sentence-transformers` + `BAAI/bge-large-en-v1.5` (local, no API key, no per-call cost — routed independently of `AI_PROVIDER` since embedding is retrieval infrastructure, not a judgment call, and Anthropic has no embeddings endpoint), `faiss-cpu` (`IndexFlatIP`), then Claude or Gemini for answer synthesis only.
+
+**Benefits.** Every answer is auditable back to a specific clause, not a black-box summary; retrieval never touches the AI provider, so browsing/asking cheap questions costs nothing beyond the one synthesis call; reuses the exact same provider dispatcher, structured-output pattern, and `ClauseCard` citation UI already established elsewhere in the app rather than inventing a parallel system.
+
+**Possible improvements.** Dense single-vector retrieval measurably struggles with *compound* questions (verified directly — see [Retrieval & Context Handling](#-retrieval--context-handling)); query decomposition or hybrid keyword+semantic search would address this. No persistent index across process restarts (in-memory cache only). No multi-turn topic tracking beyond resending raw history text.
 
 ---
 
@@ -431,9 +473,12 @@ flowchart TB
         DIFF["Word-level Diff\n(diff-match-patch)"]
     end
 
-    subgraph LLM["Claude API — judgment only"]
+    subgraph LLM["AI Provider (Claude or Gemini) — judgment only"]
+        DISP["ai_client.py\n(provider dispatcher)"]
         CTR["Contradiction\nJudgment"]
         FALL["Fallback Redline\nDrafting"]
+        DISP --> CTR
+        DISP --> FALL
     end
 
     R1 --> Parse
@@ -465,7 +510,7 @@ flowchart TB
     PBJSON --> R7
 ```
 
-**Key architectural principle:** everything in the *Deterministic Parsing* and *Deterministic Analysis* layers is regex/graph-algorithm code with zero LLM involvement, fully unit-tested and reproducible. The *Claude API* box is deliberately small and isolated (`app/services/claude_client.py`) — exactly two structured-output calls, both gated by the deterministic completeness check upstream.
+**Key architectural principle:** everything in the *Deterministic Parsing* and *Deterministic Analysis* layers is regex/graph-algorithm code with zero LLM involvement, fully unit-tested and reproducible. The *AI Provider* box is deliberately small and isolated — `app/services/ai_client.py` is the only module the rest of the app imports from, and it dispatches to either `claude_client.py` or `gemini_client.py` based on `AI_PROVIDER`, both implementing the exact same two structured-output calls against the exact same prompts/schemas (`app/services/ai_schemas.py`), both gated by the deterministic completeness check upstream.
 
 ---
 
@@ -476,7 +521,7 @@ LexTwin AI/
 ├── backend/                          # FastAPI application
 │   ├── app/
 │   │   ├── main.py                   # FastAPI app, router registration, CORS, /api/health
-│   │   ├── config.py                 # Settings loaded from .env (Firebase, Claude, upload limits)
+│   │   ├── config.py                 # Settings loaded from .env (Firebase, AI provider, upload limits)
 │   │   ├── firebase.py               # Storage abstraction: Firestore + local-disk fallback
 │   │   │
 │   │   ├── models/                   # Pydantic schemas (shared request/response contracts)
@@ -487,7 +532,9 @@ LexTwin AI/
 │   │   │   ├── redline.py            #   RedlineSuggestion, DiffOp
 │   │   │   ├── obligation.py         #   Obligation
 │   │   │   ├── playbook.py           #   TopicRule, TopicRulesConfig
-│   │   │   └── audit.py              #   AuditEntry, AuditDecision
+│   │   │   ├── audit.py              #   AuditEntry, AuditDecision
+│   │   │   ├── report.py             #   ReportRequest, ReportRiskFlag
+│   │   │   └── chat.py               #   ChatRequest, ChatResponse, ChatCitation
 │   │   │
 │   │   ├── parsers/                  # Format-specific → common intermediate form
 │   │   │   ├── pdf_parser.py         #   PyMuPDF-based text/table/page extraction
@@ -511,6 +558,10 @@ LexTwin AI/
 │   │   ├── obligations/              # Deterministic obligation extraction
 │   │   │   └── extractor.py
 │   │   │
+│   │   ├── rag/                      # Chat with Contract retrieval (local, no AI provider call)
+│   │   │   ├── embedder.py           #   BAAI/bge-large-en-v1.5 via sentence-transformers
+│   │   │   └── index.py              #   In-process FAISS clause index (build + search)
+│   │   │
 │   │   ├── playbook/                 # Multi-source legal reference library + topic config
 │   │   │   ├── __init__.py           #   Multi-source loader (source-tagged categories)
 │   │   │   ├── topic_rules.py        #   Live, user-editable topic config (Firestore-backed)
@@ -527,7 +578,13 @@ LexTwin AI/
 │   │   │   ├── redline_service.py
 │   │   │   ├── obligation_service.py
 │   │   │   ├── audit_service.py
-│   │   │   └── claude_client.py      #   The only module that calls the Anthropic API
+│   │   │   ├── report_service.py     #   Renders the PDF report (reportlab; pure formatting, no analysis)
+│   │   │   ├── chat_service.py       #   Chat with Contract orchestration (retrieval + answer synthesis)
+│   │   │   ├── ai_client.py          #   Provider dispatcher (routes to claude_client or gemini_client)
+│   │   │   ├── ai_schemas.py         #   Shared prompts + Pydantic schemas (provider-agnostic)
+│   │   │   ├── ai_errors.py          #   Shared AIClientError base exception
+│   │   │   ├── claude_client.py      #   Calls the Anthropic API (AI_PROVIDER=claude, the default)
+│   │   │   └── gemini_client.py      #   Calls the Google Gen AI API (AI_PROVIDER=gemini)
 │   │   │
 │   │   └── routers/                  # FastAPI route definitions (thin — delegate to services)
 │   │       ├── documents.py
@@ -537,7 +594,9 @@ LexTwin AI/
 │   │       ├── redline.py
 │   │       ├── obligations.py
 │   │       ├── playbook.py
-│   │       └── audit.py
+│   │       ├── audit.py
+│   │       ├── report.py
+│   │       └── chat.py
 │   │
 │   ├── scripts/                      # One-off / offline data-prep scripts
 │   │   ├── build_cuad_playbook.py
@@ -564,6 +623,7 @@ LexTwin AI/
 │   │   │   ├── RiskFlagsList.tsx / RiskDetailPanel.tsx
 │   │   │   ├── ObligationsPanel.tsx
 │   │   │   ├── AuditTrailPanel.tsx
+│   │   │   ├── ChatPanel.tsx         #   Chat with Contract UI + citation chips
 │   │   │   └── DiffView.tsx          #   Renders redline diff_markdown
 │   │   ├── lib/
 │   │   │   ├── riskFlags.ts          #   Client-side risk-flag aggregation
@@ -598,8 +658,9 @@ LexTwin AI/
 | Python | 3.10+ | 3.10.11 used in development |
 | Node.js | 18+ | 23.4.0 used in development |
 | npm | 9+ | ships with Node |
-| A Claude (Anthropic) API key | — | required only for contradiction detection & redlining; everything else works without it |
+| An AI provider API key (Claude **or** Gemini) | — | required only for contradiction detection, redlining & Chat with Contract's answer synthesis; everything else works without it |
 | A Firebase project | optional | app runs fully functional against a local-disk store with `USE_FIREBASE=false` |
+| ~2GB free disk + network for first run | — | `sentence-transformers`/`faiss-cpu` (Chat with Contract) pull in PyTorch (CPU-only build) and download the `BAAI/bge-large-en-v1.5` embedding model (~1.3GB) on first use, then cache both locally — no API key needed for this part, it runs entirely on-machine |
 
 ### 1. Clone the repository
 
@@ -646,9 +707,15 @@ To use real Firestore instead:
 3. Project Settings → **Service Accounts** → *Generate new private key* → save the downloaded JSON as `backend/firebase-credentials.json` (already covered by `.gitignore` — never commit this file).
 4. In `backend/.env`, set `USE_FIREBASE=true`.
 
-### 5. Configure Claude (Anthropic)
+### 5. Configure an AI provider (Claude or Gemini)
 
-Get an API key from [console.anthropic.com](https://console.anthropic.com) and set `ANTHROPIC_API_KEY` in `backend/.env`. Without it, every feature works **except** cross-document contradiction detection and redline generation, which will report a graceful "AI contradiction detection unavailable" message rather than crashing.
+Cross-document contradiction detection and redline generation are powered by whichever provider `AI_PROVIDER` selects in `backend/.env` (default `claude`). Without a valid key for the selected provider, every other feature still works — this specific pair of features reports a graceful "AI contradiction detection unavailable" message rather than crashing.
+
+**Option A — Claude (default):** get an API key from [console.anthropic.com](https://console.anthropic.com), set `ANTHROPIC_API_KEY` in `backend/.env`, leave `AI_PROVIDER=claude`.
+
+**Option B — Gemini:** get an API key from [aistudio.google.com](https://aistudio.google.com/apikey), set `GEMINI_API_KEY` in `backend/.env`, and set `AI_PROVIDER=gemini`.
+
+Both providers are asked the identical prompt against the identical response schema (`app/services/ai_schemas.py`) — switching `AI_PROVIDER` changes nothing about the app's behavior beyond which vendor answers the question.
 
 ### 6. (Optional) Download reference datasets
 
@@ -707,7 +774,7 @@ Open **http://localhost:5173** — you should see the LexTwin AI upload page.
 | Symptom | Fix |
 |---|---|
 | `ModuleNotFoundError` on backend start | Confirm the virtual environment is activated and `pip install -r requirements.txt` completed without errors. |
-| `AI contradiction detection unavailable` in the UI | `ANTHROPIC_API_KEY` is unset/invalid in `backend/.env`. Every other feature still works. |
+| `AI contradiction detection unavailable` in the UI | The API key for the active `AI_PROVIDER` is unset/invalid in `backend/.env` (`ANTHROPIC_API_KEY` for `claude`, `GEMINI_API_KEY` for `gemini`). Every other feature still works. |
 | `USE_FIREBASE=true but credentials file not found` | Either set `USE_FIREBASE=false` for local-disk mode, or place a valid service account JSON at `FIREBASE_CREDENTIALS_PATH`. |
 | CORS error in browser console | The backend only allows `http://localhost:5173` by default (`app/main.py`); if you changed the frontend port, update `allow_origins`. |
 | `[WinError 10013]` on `uvicorn --reload` (Windows) | A previous process is still holding port 8000 — find and stop it (`Get-NetTCPConnection -LocalPort 8000`) before restarting. |
@@ -730,14 +797,20 @@ USE_FIREBASE=false
 # USE_FIREBASE=true. Never commit this file — it is already gitignored.
 FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
 
-# ── Anthropic / Claude ───────────────────────────────────────────────────
-# Required for cross-document contradiction detection and redline
-# generation. Every other feature (upload, parsing, dependency graph,
-# completeness check, obligation extraction) works without this set.
-ANTHROPIC_API_KEY=
+# ── AI provider ──────────────────────────────────────────────────────────
+# Which provider powers cross-document contradiction detection and redline
+# generation: "claude" (default) or "gemini". Every other feature (upload,
+# parsing, dependency graph, completeness check, obligation extraction)
+# works with neither key set.
+AI_PROVIDER=claude
 
-# Which Claude model to use for both AI-assisted features.
+# Anthropic / Claude -- used when AI_PROVIDER=claude.
+ANTHROPIC_API_KEY=
 CLAUDE_MODEL=claude-sonnet-4-6
+
+# Google / Gemini -- used when AI_PROVIDER=gemini.
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-flash-lite-latest
 
 # ── Upload limits ────────────────────────────────────────────────────────
 # Maximum accepted upload size, in megabytes.
@@ -748,8 +821,11 @@ MAX_UPLOAD_MB=25
 |---|---|---|---|
 | `USE_FIREBASE` | No | `false` | `true` to persist to real Firestore; `false` uses a local JSON-file store under `backend/local_data/`. |
 | `FIREBASE_CREDENTIALS_PATH` | Only if `USE_FIREBASE=true` | `./firebase-credentials.json` | Path to a Firebase Admin SDK service-account key. |
-| `ANTHROPIC_API_KEY` | Only for AI features | *(empty)* | Anthropic API key powering contradiction detection & redline generation. |
+| `AI_PROVIDER` | No | `claude` | `claude` or `gemini` -- selects which SDK `app/services/ai_client.py` dispatches to. |
+| `ANTHROPIC_API_KEY` | Only if `AI_PROVIDER=claude` | *(empty)* | Anthropic API key powering contradiction detection & redline generation. |
 | `CLAUDE_MODEL` | No | `claude-sonnet-4-6` | Claude model ID used for both structured-output calls. |
+| `GEMINI_API_KEY` | Only if `AI_PROVIDER=gemini` | *(empty)* | Google Gen AI API key, same two features. |
+| `GEMINI_MODEL` | No | `gemini-flash-lite-latest` | Gemini model ID used for both structured-output calls. On a free-tier key, the full "flash" tier can return `503` under load; `flash-lite` has separate quota and responded reliably in testing. |
 | `MAX_UPLOAD_MB` | No | `25` | Maximum accepted document upload size. |
 
 > **No frontend `.env` is required.** The frontend talks to the backend exclusively through a same-origin `/api` proxy configured in `vite.config.ts` — there is no Firebase Web SDK config and no API keys ever reach the browser (see [Security](#-security)).
@@ -1085,6 +1161,64 @@ curl -X POST http://127.0.0.1:8000/api/documents/upload \
 
 ---
 
+### `POST /report/generate`
+
+**Purpose.** Render the current on-screen dashboard (risk flags, obligations, audit trail) as a downloadable PDF — see [feature 14](#14-downloadable-pdf-risk-report). Pure formatting: never re-runs analysis or calls the AI provider.
+
+**Request:**
+
+```json
+{
+  "msa_filename": "msa_sample.pdf",
+  "sow_filename": "sow_sample.pdf",
+  "risk_flags": [
+    { "id": "contradiction-msa-1::5.1-sow-1::3.3", "kind": "contradiction", "severity": "high", "title": "Payment Terms: MSA and SOW conflict", "description": "45 days vs 15 days.", "clause_ids": ["msa-1::5.1", "sow-1::3.3"], "confidence": 0.97 }
+  ],
+  "obligations": [],
+  "audit_entries": []
+}
+```
+
+**Response `200`** — `application/pdf` binary body with `Content-Disposition: attachment; filename="..."`.
+
+**Status codes.** `200`.
+
+---
+
+### `POST /chat/ask`
+
+**Purpose.** Ask a free-form question about an MSA/SOW pair — see [feature 15](#15-chat-with-contract-rag). Embedding/retrieval is local; only answer synthesis calls the configured AI provider.
+
+**Request:**
+
+```json
+{
+  "doc_ids": ["msa-8843d45b", "sow-01150791"],
+  "question": "What are the payment terms?",
+  "history": [
+    { "role": "user", "content": "What does the SOW cover?" },
+    { "role": "assistant", "content": "A cloud migration engagement, per SOW §1.1." }
+  ]
+}
+```
+
+**Response `200`:**
+
+```json
+{
+  "answer": "According to the Master Service Agreement, the Client is required to pay all undisputed invoices within forty-five days of receiving a correct invoice. However, the Statement of Work overrides this for project-specific fees and milestone schedules, where the Client is required to pay within fifteen days of receipt.",
+  "citations": [
+    { "clause_id": "sow-01150791::3.3", "doc_id": "sow-01150791", "section_number": "3.3", "heading": "Invoice Terms" },
+    { "clause_id": "msa-8843d45b::5.1", "doc_id": "msa-8843d45b", "section_number": "5.1", "heading": "Invoicing and Payment" },
+    { "clause_id": "msa-8843d45b::3.2", "doc_id": "msa-8843d45b", "section_number": "3.2", "heading": "Order of Precedence" }
+  ]
+}
+```
+
+**Status codes.** `200` · `404` (unknown `doc_ids`).
+
+---
+
 ### `GET /health`
 
 **Purpose.** Liveness check. **Response:** `{"status": "ok"}`. **Status codes.** `200`.
@@ -1169,9 +1303,9 @@ flowchart LR
 | **Dependency graph + cycle detection** | Deterministic | `networkx` graph build, `simple_cycles()` for circular references and override conflicts. |
 | **Completeness / refusal check** | Deterministic | Doc-set-aware missing-reference gating — the guardrail that decides what's even eligible for AI analysis. |
 | **Topic alignment** | Deterministic | Regex classification of clause headings against the (user-editable) topic taxonomy. |
-| **Contradiction judgment** | **AI (Claude)** | One structured-output call **per aligned, non-gated topic pair** — never per-document, never per-token streaming chat. |
+| **Contradiction judgment** | **AI (Claude or Gemini)** | One structured-output call **per aligned, non-gated topic pair** — never per-document, never per-token streaming chat. |
 | **Obligation extraction** | Deterministic | Regex modal-verb + deadline extraction, no LLM involvement at all. |
-| **Redline drafting** | **AI (Claude)** | One structured-output call per flagged clause a reviewer chooses to redline. |
+| **Redline drafting** | **AI (Claude or Gemini)** | One structured-output call per flagged clause a reviewer chooses to redline. |
 | **Word-level diff** | Deterministic | `diff-match-patch` word-boundary diffing between original and Claude's suggested text. |
 
 There is **no chunking, embedding, or vector search step** in this pipeline (see [Retrieval & Context Handling](#-retrieval--context-handling) for why, and what would change that).
@@ -1186,7 +1320,7 @@ A natural question when building an "AI contract review" tool is whether to reac
 
 1. **Determinism where determinism is possible is strictly better than an agent for structural tasks.** Parsing, hierarchy detection, cross-reference resolution, cycle detection, and obligation extraction are not judgment calls — they're mechanically checkable facts about a document's structure. Routing these through an LLM agent (even a well-prompted one) would trade a reproducible, unit-testable, zero-cost-per-call system for a probabilistic one, for no accuracy benefit. Every one of these stages is covered by deterministic unit tests in `backend/tests/`.
 
-2. **Where judgment genuinely is required — contradiction detection and redline drafting — a single, tightly-scoped call with structured output is easier to audit than a multi-agent conversation.** Each Claude call has one job, one fixed system prompt, and a Pydantic-validated response shape. There is no inter-agent message history to review, no risk of one agent's hallucination compounding into a second agent's reasoning, and no ambiguity about which "agent" produced a given claim — every finding in the [audit trail](#13-human-in-the-loop-audit-trail) traces to exactly one API call.
+2. **Where judgment genuinely is required — contradiction detection and redline drafting — a single, tightly-scoped call with structured output is easier to audit than a multi-agent conversation.** Each AI call (Claude or Gemini) has one job, one fixed system prompt, and a Pydantic-validated response shape. There is no inter-agent message history to review, no risk of one agent's hallucination compounding into a second agent's reasoning, and no ambiguity about which "agent" produced a given claim — every finding in the [audit trail](#13-human-in-the-loop-audit-trail) traces to exactly one API call.
 
 3. **Cost and latency stay bounded and predictable.** A multi-agent review pipeline typically means several-to-many LLM calls per document, often with inter-agent back-and-forth. LexTwin AI's AI cost is `O(aligned topics)` for contradiction detection and `O(flagged clauses a reviewer chooses to redline)` for drafting — both small, both directly visible to the user before they trigger it.
 
@@ -1211,11 +1345,23 @@ This doesn't mean multi-agent orchestration has no place here — a genuinely op
 
 ## 🔍 Retrieval & Context Handling
 
-There is **no vector database, embedding model, or RAG pipeline** in LexTwin AI today, and that's a deliberate scoping decision, not an oversight — worth explaining rather than silently claiming otherwise.
+LexTwin AI uses **two different context strategies, deliberately**, depending on whether the task already knows exactly which clauses matter or has to find them.
 
-**Why retrieval isn't needed yet:** every AI call in the current pipeline operates on **exactly the clauses the deterministic pipeline has already identified as relevant** — a topic-aligned MSA/SOW clause pair for contradiction detection, or a single flagged clause (plus an optional reference clause) for redlining. At the scale of a single MSA/SOW pair (tens of clauses, not thousands of pages), full clause text fits comfortably in a single prompt with no retrieval step required — the "retrieval" is really just the deterministic topic-alignment and reference-resolution logic already documented above, doing exact-match structural retrieval instead of semantic/vector retrieval.
+**Structural retrieval (contradiction detection, redlining) — no vector search.** Every AI call for these two features operates on **exactly the clauses the deterministic pipeline has already identified as relevant** — a topic-aligned MSA/SOW clause pair, or a single flagged clause plus an optional reference clause. At that scale, full clause text fits comfortably in a single prompt; "retrieval" here is really just the deterministic topic-alignment and reference-resolution logic documented above (see [features 6](#6-missing-reference-refusal-guardrail) and [8](#8-configurable-legal-playbook--topic-alignment)), doing exact-match structural lookup instead of semantic search. Adding embeddings here would be pure overhead for no accuracy benefit.
 
-**Where retrieval would become necessary:** an open-ended chat interface ("ask any question about this contract set"), analysis across a large corpus of many contracts at once, or semantic (not just topic-label) similarity search between clauses. None of these are built today. If/when they are, the natural design is: chunk clauses → embed (e.g. a `bge-large`-class model) → store in a vector index (e.g. FAISS) → retrieve top-k relevant chunks per query → construct a grounded prompt. This is listed explicitly in the [Roadmap](#-future-enhancements--roadmap).
+**Real embedding-based RAG (Chat with Contract) — because the question, this time, is genuinely open-ended.** A user can ask *anything* about the document pair, so the app can't know in advance which clauses are relevant — this is the one feature where semantic retrieval earns its keep, and it's a real vector-search pipeline, not a simplification:
+
+```
+Question ──▶ embed (BAAI/bge-large-en-v1.5) ──▶ FAISS cosine search over
+    all clauses' embeddings (embedded once per doc pair, in-process cache)
+    ──▶ top-8 clauses ──▶ numbered context block ──▶ AI provider
+    (Claude or Gemini) synthesizes a grounded answer + cites which
+    numbered clauses it used ──▶ backend maps citations back to clause_ids
+```
+
+Embedding and vector search run **entirely locally** (`sentence-transformers` + `faiss-cpu`) — not routed through `AI_PROVIDER`, since embedding is retrieval infrastructure, not a judgment call, and Anthropic doesn't offer an embeddings endpoint at all. Only the final answer-synthesis step calls Claude or Gemini, with the same structured-output pattern used everywhere else in the app (a `ChatAnswer` schema with `answer` + `cited_refs`, validated by the SDK before it can reach the frontend).
+
+**A known, honest limitation:** dense single-vector retrieval genuinely struggles with *compound* questions (e.g. *"what are the payment terms, and is there a conflict between the MSA and SOW?"*) — the embedding ends up representing an average of both sub-questions, which can pull retrieval toward clauses about the MSA/SOW *relationship* in general rather than the specific payment clauses. Verified directly: for that exact compound phrasing, the actually-relevant `SOW §3.3` clause didn't appear even at `top_k=12`. Single, focused questions retrieve reliably. This is a well-known characteristic of naive dense retrieval, not a bug — query decomposition or hybrid (keyword + semantic) search would address it, and both are listed in the [Roadmap](#-future-enhancements--roadmap).
 
 ---
 
@@ -1249,11 +1395,11 @@ An honest accounting of what's in place and what isn't:
 |---|---|
 | **Authentication** | Not implemented. No login, no user accounts, no session management. Intended for local/demo/single-tenant use today. |
 | **Authorization** | Not applicable without authentication — every API endpoint is currently open to whoever can reach the backend process. |
-| **Secrets management** | `.env` (gitignored) for the Claude API key and Firebase config path; `firebase-credentials.json` (gitignored) for the service-account key. Neither is ever sent to the frontend. |
+| **Secrets management** | `.env` (gitignored) for the active AI provider's API key and Firebase config path; `firebase-credentials.json` (gitignored) for the service-account key. None of these are ever sent to the frontend. |
 | **Firebase access model** | Server-side only via the Admin SDK with a service-account credential — the frontend has zero direct Firebase access, so there is no client-side attack surface on Firestore. |
-| **Prompt-injection exposure** | Both Claude calls use **structured output** (`output_format=<PydanticModel>`) with a narrow, fixed system prompt and a bounded input (one or two clause texts). This substantially limits — though does not formally eliminate — the blast radius of adversarial text embedded in a clause: even a successfully "injected" response is still forced through the same fixed schema before it can reach the frontend. |
-| **Hallucination mitigation** | The [missing-reference refusal guardrail](#6-missing-reference-refusal-guardrail) is a hard, code-level precondition — a clause is never sent to Claude for contradiction analysis if a document it structurally depends on is absent from the upload set. This is enforced before any API call is constructed, not policed after the fact. |
-| **Rate limiting** | Not implemented on the LexTwin API layer. The underlying Anthropic SDK applies its own retry/backoff for transient API errors, but there is no request throttling on `/api/*` today. |
+| **Prompt-injection exposure** | Both AI calls (either provider) use **structured output** (Claude's `output_format=<PydanticModel>`, Gemini's `response_schema=<PydanticModel>`) with a narrow, fixed system prompt and a bounded input (one or two clause texts). This substantially limits — though does not formally eliminate — the blast radius of adversarial text embedded in a clause: even a successfully "injected" response is still forced through the same fixed schema before it can reach the frontend. |
+| **Hallucination mitigation** | The [missing-reference refusal guardrail](#6-missing-reference-refusal-guardrail) is a hard, code-level precondition — a clause is never sent to the AI provider for contradiction analysis if a document it structurally depends on is absent from the upload set. This is enforced before any API call is constructed, not policed after the fact. |
+| **Rate limiting** | Not implemented on the LexTwin API layer. Both the Anthropic and Google Gen AI SDKs apply their own retry/backoff for transient API errors, but there is no request throttling on `/api/*` today. |
 | **Input validation** | File uploads are size-capped (`MAX_UPLOAD_MB`) and filename-sanitized (alphanumeric + `._-` only) before being written to a temp path; all request/response bodies are Pydantic-validated. |
 | **Dependency/CORS scope** | CORS is currently locked to `http://localhost:5173` — a real deployment must update this to the actual frontend origin, not `*`. |
 
@@ -1266,10 +1412,10 @@ See [Roadmap](#-future-enhancements--roadmap) for authentication, authorization,
 | Area | Current approach |
 |---|---|
 | **Structural analysis cost** | Parsing, hierarchy, references, dependency graph, cycle detection, completeness check, and obligation extraction are all pure Python/regex/`networkx` — no network calls, effectively free and fast (sub-second on typical contract lengths). |
-| **AI call scoping** | Contradiction detection makes exactly one Claude call per aligned, non-gated topic pair (not per-clause, not per-document, not streaming chat) — bounded and predictable cost per analysis. Redline generation is one call per clause a reviewer explicitly chooses to redline. |
+| **AI call scoping** | Contradiction detection makes exactly one AI provider call per aligned, non-gated topic pair (not per-clause, not per-document, not streaming chat) — bounded and predictable cost per analysis, regardless of which provider is configured. Redline generation is one call per clause a reviewer explicitly chooses to redline. |
 | **Caching** | The multi-source reference library (`app/playbook/load_playbooks()`) is loaded once and memoized in-process (`functools.lru_cache`) — no repeated disk reads across requests. No response-level HTTP caching yet. |
 | **Async I/O** | The upload endpoint is `async def`; most other endpoints are synchronous FastAPI handlers (appropriate given they're CPU-bound regex/graph work, not I/O-bound). |
-| **Streaming** | Not implemented — Claude responses are awaited in full (`messages.parse`) before returning, appropriate for structured-output calls that must be schema-validated as a whole rather than rendered token-by-token. |
+| **Streaming** | Not implemented — AI provider responses are awaited in full before returning, appropriate for structured-output calls that must be schema-validated as a whole rather than rendered token-by-token. |
 | **Test suite runtime** | 170 tests total. The default fast suite (166 tests, dataset-heavy/LLM tests excluded via `pytest.ini` markers) runs in ~7 seconds; the full suite including slow real-contract parsing tests runs in ~70 seconds. |
 | **Graph rendering** | React Flow handles moderate node/edge counts (tens to low hundreds) smoothly client-side; not yet load-tested against very large multi-hundred-clause contract sets. |
 
@@ -1287,7 +1433,7 @@ The frontend is a standard Vite + React static build (`npm run build` → `front
 
 ### Backend deployment (recommended: Render)
 
-The backend is a standard FastAPI app served by `uvicorn`, which deploys cleanly to Render, Railway, Fly.io, or any Python-capable PaaS. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set `ANTHROPIC_API_KEY`, `USE_FIREBASE`, and (if applicable) mount `firebase-credentials.json` as a secret file, via the platform's environment/secret configuration — never commit these.
+The backend is a standard FastAPI app served by `uvicorn`, which deploys cleanly to Render, Railway, Fly.io, or any Python-capable PaaS. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set `AI_PROVIDER` plus the matching key (`ANTHROPIC_API_KEY` or `GEMINI_API_KEY`), `USE_FIREBASE`, and (if applicable) mount `firebase-credentials.json` as a secret file, via the platform's environment/secret configuration — never commit these.
 
 **Before deploying, update `app/main.py`'s `CORSMiddleware`** to allow your real frontend origin instead of `http://localhost:5173`.
 
@@ -1306,7 +1452,7 @@ Only Firestore is used in production, via the Admin SDK service-account credenti
 Ideas below are genuinely **not built yet** — this section exists precisely so ambition lives here, honestly labeled, instead of being described as shipped elsewhere in this document.
 
 1. **OCR support** for scanned/image-only PDFs (no native text layer) — e.g. Tesseract or a cloud OCR API as a fallback when PyMuPDF extracts no text.
-2. **Retrieval-Augmented chat interface** — free-form Q&A over an uploaded contract set, grounded via chunking + embeddings + vector search (e.g. FAISS, BAAI `bge-large`) instead of today's fixed structural queries.
+2. ~~Retrieval-Augmented chat interface~~ — **done**, see [feature 15](#15-chat-with-contract-rag). Query decomposition or hybrid (keyword + semantic) search would improve retrieval on compound questions specifically (see [Retrieval & Context Handling](#-retrieval--context-handling)).
 3. **Multi-agent review pipeline** — a Coordinator Agent dispatching to specialist Legal / Finance / Risk / Compliance / Security / Negotiation agents for genuinely open-ended review tasks (see [AI Usage Model](#-ai-usage-model-why-not-multi-agent) for why this isn't the default architecture today).
 4. **Negotiation simulator** — an AI-driven simulation of a negotiation exchange between counterparties over specific flagged clauses.
 5. **Negotiation score** — a single composite score summarizing how favorable/risky a contract pair is, with a documented, inspectable scoring rubric.
@@ -1320,12 +1466,12 @@ Ideas below are genuinely **not built yet** — this section exists precisely so
 13. **Role-based access control** — distinct permissions for reviewers, approvers, and administrators.
 14. **Rate limiting** on the API layer, independent of the Anthropic SDK's own retry/backoff.
 15. **Response caching** for repeated graph/completeness/contradiction analyses of an unchanged document pair.
-16. **Async/streaming Claude calls** for lower perceived latency on redline generation.
+16. **Async/streaming AI provider calls** for lower perceived latency on redline generation.
 17. **Dockerfiles + `docker-compose.yml`** for one-command local orchestration of both services.
 18. **CI/CD pipeline** (GitHub Actions) running the pytest suite and frontend build on every PR.
 19. **Automated deployment** to Render/Vercel on merge to `main`.
 20. **PDF/Word export** of a redline suggestion, applied back into a downloadable revised document.
-21. **Exportable risk report** (PDF/CSV) summarizing all flags, obligations, and audit decisions for a document pair.
+21. **CSV/spreadsheet export** of the same risk report data, for teams that want to pivot/filter findings outside the app (the PDF version is already built — see [feature 14](#14-downloadable-pdf-risk-report)).
 22. **Live, streaming dependency graph** that updates incrementally as a document is re-uploaded/amended, rather than fully recomputing on each request.
 23. **Absolute-date obligation deadlines** (e.g. *"no later than March 1, 2027"*), not just relative day counts.
 24. **Improved responsible-party resolution** in obligation extraction, moving beyond the current "preceding noun phrase" heuristic toward actual party-name resolution against the contract's defined-terms section.
@@ -1393,7 +1539,8 @@ This project is licensed under the **MIT License** — see [LICENSE](./LICENSE) 
 
 ## 🙏 Acknowledgements
 
-- **[Anthropic](https://www.anthropic.com/)** — Claude API, powering contradiction detection and redline drafting.
+- **[Anthropic](https://www.anthropic.com/)** — Claude API, the default provider for contradiction detection and redline drafting.
+- **[Google](https://ai.google.dev/)** — Gemini API via the `google-genai` SDK, the alternative AI provider (`AI_PROVIDER=gemini`).
 - **[The Atticus Project](https://www.atticusprojectai.org/)** — CUAD v1 dataset.
 - **[LexGLUE](https://github.com/coastalcph/lex-glue)** (Chalkidis et al.) — LEDGAR and Unfair ToS datasets.
 - **[Stanford NLP Group](https://stanfordnlp.github.io/contract-nli/)** — ContractNLI dataset (Koreeda & Manning, EMNLP Findings 2021).
@@ -1404,6 +1551,8 @@ This project is licensed under the **MIT License** — see [LICENSE](./LICENSE) 
 - **[React](https://react.dev/)**, **[Vite](https://vite.dev/)**, and **[React Flow](https://reactflow.dev/)** — frontend framework, tooling, and graph visualization.
 - **[TailwindCSS](https://tailwindcss.com/)** — UI styling.
 - **[Firebase](https://firebase.google.com/)** — Firestore persistence.
+- **[BAAI](https://huggingface.co/BAAI/bge-large-en-v1.5)** — the `bge-large-en-v1.5` embedding model powering Chat with Contract's retrieval.
+- **[sentence-transformers](https://www.sbert.net/)** and **[FAISS](https://github.com/facebookresearch/faiss)** (Meta AI) — local embedding inference and vector search.
 
 ---
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Clause } from '../types/document'
 import type { RiskFlag } from '../lib/riskFlags'
+import { SEVERITY_STYLE } from '../lib/riskFlags'
 import type { RedlineSuggestion } from '../types/redline'
 import { createAuditEntry, generateRedline } from '../api/client'
 import ClauseCard from './ClauseCard'
@@ -10,6 +11,18 @@ interface ClauseLookupEntry {
   clause: Clause
   docLabel: string
   siblingClauses: Clause[]
+}
+
+function ConfidenceMeter({ value }: { value: number }) {
+  const pct = Math.round(value * 100)
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white" role="presentation">
+        <div className="h-full rounded-full bg-redline" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="font-mono text-xs font-semibold tabular-nums text-redline">{pct}% confidence</span>
+    </div>
+  )
 }
 
 export default function RiskDetailPanel({
@@ -31,7 +44,11 @@ export default function RiskDetailPanel({
   const [logged, setLogged] = useState(false)
 
   if (!flag) {
-    return <p className="text-sm text-slate-500">Select a flagged risk to see details.</p>
+    return (
+      <div className="flex min-h-[220px] items-center justify-center rounded-md border border-dashed border-ledger text-sm text-slate-body">
+        Select a flagged risk to see details.
+      </div>
+    )
   }
 
   const clauses = flag.clauseIds.map((id) => clauseLookup.get(id)).filter((c): c is ClauseLookupEntry => !!c)
@@ -78,16 +95,16 @@ export default function RiskDetailPanel({
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{flag.severity} severity</p>
-        <h2 className="text-lg font-semibold text-slate-900">{flag.title}</h2>
-        {flag.description && <p className="mt-1 text-sm text-slate-600">{flag.description}</p>}
+        <p className={`font-mono text-[11px] font-semibold uppercase tracking-wider ${SEVERITY_STYLE[flag.severity].text}`}>
+          {flag.severity} severity
+        </p>
+        <h2 className="mt-1 font-serif text-lg font-medium text-ink">{flag.title}</h2>
+        {flag.description && <p className="mt-1.5 text-sm text-slate-body">{flag.description}</p>}
       </div>
 
-      {isContradiction && flag.contradiction && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          <p className="font-semibold">
-            Confidence: {flag.contradiction.confidence != null ? `${Math.round(flag.contradiction.confidence * 100)}%` : '—'}
-          </p>
+      {isContradiction && flag.contradiction?.confidence != null && (
+        <div className="rounded-md border border-redline/30 bg-redline-tint px-3.5 py-3">
+          <ConfidenceMeter value={flag.contradiction.confidence} />
         </div>
       )}
 
@@ -98,35 +115,35 @@ export default function RiskDetailPanel({
       </div>
 
       {isContradiction && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-900">Suggested fallback language</h3>
+        <div className="rounded-md border border-ledger bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-serif text-base font-medium text-ink">Suggested fallback language</h3>
             <button
               onClick={handleGenerateRedline}
               disabled={loading}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+              className="shrink-0 rounded-sm border border-ink bg-ink px-3.5 py-1.5 text-sm font-semibold text-paper transition-colors hover:bg-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-ledger disabled:bg-ledger-soft disabled:text-slate-body"
             >
               {loading ? 'Generating…' : redline ? 'Regenerate' : 'Generate Redline'}
             </button>
           </div>
 
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="mt-2 text-sm text-redline">{error}</p>}
 
           {redline && (
-            <div className="mt-3 space-y-3">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div className="mt-3.5 space-y-3.5">
+              <div className="rounded-sm border border-ledger bg-ledger-soft/60 p-3.5">
                 <DiffView diff={redline.diff} />
               </div>
-              <p className="text-sm text-slate-600">
-                <span className="font-semibold text-slate-800">Rationale: </span>
+              <p className="text-sm text-slate-body">
+                <span className="font-semibold text-ink">Rationale — </span>
                 {redline.rationale}
               </p>
               <button
                 onClick={handleLogToAuditTrail}
                 disabled={logged}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                className="rounded-sm border border-ledger px-3.5 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ledger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {logged ? 'Logged to audit trail' : 'Log to Audit Trail'}
+                {logged ? 'Logged to audit trail ✓' : 'Log to Audit Trail'}
               </button>
             </div>
           )}

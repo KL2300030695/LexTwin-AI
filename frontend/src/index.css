@@ -1,5 +1,31 @@
 @import "tailwindcss";
 
+@theme {
+  /* Base neutrals -- "ink on ledger paper," not default SaaS gray-on-white */
+  --color-paper: #f5f6f8;
+  --color-ink: #151a2d;
+  --color-ink-soft: #2a3149;
+  --color-slate-body: #4a5268;
+  --color-ledger: #dce0e8;
+  --color-ledger-soft: #edeff3;
+
+  /* Risk accents -- spent only when something needs a reviewer's attention */
+  --color-redline: #9c2b37;
+  --color-redline-tint: #f6e9ea;
+  --color-seal-amber: #b07c25;
+  --color-seal-amber-tint: #f6efe1;
+
+  /* Document-identity accents -- deliberately outside the risk vocabulary */
+  --color-seal-blue: #2e4e82;
+  --color-seal-blue-tint: #e8edf5;
+  --color-clay: #96603a;
+  --color-clay-tint: #f3e9e0;
+
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+
 html,
 body,
 #root {
@@ -8,5 +34,26 @@ body,
 
 body {
   margin: 0;
-  @apply bg-slate-50 text-slate-900;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* React Flow's "animated" edge (used for notwithstanding-override edges)
+     runs a dash-offset keyframe from its own stylesheet -- the blanket rule
+     above overrides animation-duration but React Flow reapplies its own
+     inline-timed animation, so it needs an explicit override. */
+  .react-flow__edge.animated path {
+    animation: none !important;
+  }
 }

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import audit, completeness, contradictions, documents, graph, obligations, playbook, redline
+from app.routers import audit, chat, completeness, contradictions, documents, graph, obligations, playbook, redline, report
 
 app = FastAPI(title="LexTwin AI - Contract & SOW Risk Analyzer", version="0.1.0")
 
@@ -21,6 +21,8 @@ app.include_router(redline.router, prefix="/api/redline", tags=["redline"])
 app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
 app.include_router(playbook.router, prefix="/api/playbook", tags=["playbook"])
 app.include_router(obligations.router, prefix="/api/obligations", tags=["obligations"])
+app.include_router(report.router, prefix="/api/report", tags=["report"])
+app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 
 
 @app.get("/api/health")
