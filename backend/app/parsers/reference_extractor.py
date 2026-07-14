@@ -17,10 +17,14 @@ _SECTION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# "Exhibit B", "Appendix 1", "Annexure A", "Schedule 2", "Exhibit B-1"
+# "Exhibit B", "Appendix 1", "Annexure A", "Schedule 2", "Exhibit B-1".
+# Keyword must be capitalized (a defined-term reference), not a lowercase
+# generic use of the word (e.g. "the fees or schedule described below").
+# The identifier must look like a label -- a letter+digits or digits+letter,
+# not an arbitrary word -- so "Schedule described" can't match "described".
 _EXHIBIT_RE = re.compile(
-    r"\b(Exhibit|Appendix|Annexure|Annex|Schedule)\s+([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)",
-    re.IGNORECASE,
+    r"\b(Exhibit|EXHIBIT|Appendix|APPENDIX|Annexure|ANNEXURE|Annex|ANNEX|Schedule|SCHEDULE)"
+    r"\s+([A-Z]\d*|\d+[A-Z]?)(?:-[A-Za-z0-9]+)?\b"
 )
 
 _EXHIBIT_TYPE_MAP = {

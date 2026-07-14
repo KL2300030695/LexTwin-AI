@@ -15,7 +15,6 @@ class Settings:
     FIREBASE_CREDENTIALS_PATH: str = os.getenv(
         "FIREBASE_CREDENTIALS_PATH", str(BACKEND_DIR / "firebase-credentials.json")
     )
-    FIREBASE_STORAGE_BUCKET: str = os.getenv("FIREBASE_STORAGE_BUCKET", "your-project-id.appspot.com")
     USE_FIREBASE: bool = os.getenv("USE_FIREBASE", "false").lower() == "true"
 
     # Anthropic / Claude

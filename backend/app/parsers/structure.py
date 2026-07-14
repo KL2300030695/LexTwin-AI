@@ -19,7 +19,7 @@ from app.parsers.reference_extractor import extract_references
 # The whole line (after stripping) must be number(s) + a short title -- this avoids
 # matching in-sentence references like "as described in Section 4.2 above".
 _HEADING_RE = re.compile(
-    r"^(?P<num>\d+(?:\.\d+){0,4})\.?\s+(?P<title>[A-Z][A-Za-z0-9 ,;:'\"()/&\-]{1,120})$"
+    r"^(?P<num>\d+(?:\.\d+){0,4})\.?\s+(?P<title>[A-Z\"'][A-Za-z0-9 ,;:'\"()/&\-]{1,120})$"
 )
 
 _EXHIBIT_HEADING_RE = re.compile(
@@ -27,11 +27,29 @@ _EXHIBIT_HEADING_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Fallback for the common real-world drafting style where the heading and the
+# clause body run together in one paragraph, e.g.:
+#   "1. Website Design and Development. Client agrees to pay Company..."
+# instead of the heading being on its own line. Only tried when _HEADING_RE
+# doesn't match. The title must be a short run of Capitalized/connector words
+# ending at a literal period -- this keeps it from misreading an ordinary
+# sentence that happens to start with a number as a heading.
+_INLINE_WORD = r"(?:[A-Z][A-Za-z']*|and|of|or|the|to|for|in|on|with|by)"
+_INLINE_TITLE = rf"{_INLINE_WORD}(?:\s+{_INLINE_WORD}){{0,5}}"
+_INLINE_HEADING_RE = re.compile(
+    rf"^(?P<num>\d+(?:\.\d+){{0,4}})\.\s+(?P<title>{_INLINE_TITLE})\.\s+(?P<rest>.{{10,}})$"
+)
+
 
 @dataclass
 class Line:
     text: str
     page: int
+    # False for a wrapped continuation line within the same source paragraph/
+    # text block -- only the first line of a block is ever a heading candidate,
+    # so a wrapped body line that happens to start with e.g. "Schedule ..."
+    # can't be mistaken for a real "Schedule X" heading.
+    is_block_start: bool = True
 
 
 @dataclass
@@ -72,6 +90,21 @@ def parse_heading(line: str) -> tuple[str, str, int] | None:
     return None
 
 
+def parse_inline_heading(line: str) -> tuple[str, str, int, str] | None:
+    """Returns (section_number, title, level, remaining_body_text) if `line`
+    is a heading+body-on-one-line paragraph (see _INLINE_HEADING_RE), else None.
+    """
+    stripped = line.strip()
+    if not stripped or len(stripped) > 500:
+        return None
+    m = _INLINE_HEADING_RE.match(stripped)
+    if not m:
+        return None
+    num = m.group("num")
+    level = num.count(".") + 1
+    return num, m.group("title").strip(), level, m.group("rest").strip()
+
+
 def parent_of(section_number: str) -> str | None:
     """'4.2.1' -> '4.2'; '4' -> None. Non-numeric (exhibit) labels have no parent."""
     if "." not in section_number:
@@ -105,12 +138,31 @@ def build_document(
 
     all_tables: list[TableModel] = []
 
+    # Tables that appeared before any text line at all (rare: doc/page opens with a table).
+    for table in anchors_by_index.get(-1, []):
+        all_tables.append(table)
+        if pending:
+            pending[-1].table_ids.append(table.id)
+
     for idx, line in enumerate(lines):
-        parsed = parse_heading(line.text)
+        parsed = parse_heading(line.text) if line.is_block_start else None
+        # Unlike _HEADING_RE, the inline-heading pattern is checked on every
+        # line (not just block starts): real contracts often pack multiple
+        # numbered clauses into a single visual block with no blank-line gap,
+        # so "2. Payment Terms. Upon signing..." can start mid-block. Its
+        # stricter shape (digit + short Title-Case phrase + period) makes
+        # false positives on ordinary wrapped body text unlikely.
+        inline = parse_inline_heading(line.text) if not parsed else None
         if parsed:
             num, title, level = parsed
             close_to_level(level)
             clause = _PendingClause(section_number=num, heading=title, level=level, page_start=line.page)
+            pending.append(clause)
+        elif inline:
+            num, title, level, rest = inline
+            close_to_level(level)
+            clause = _PendingClause(section_number=num, heading=title, level=level, page_start=line.page)
+            clause.text_parts.append(rest)
             pending.append(clause)
         else:
             if pending:
@@ -121,7 +173,6 @@ def build_document(
             all_tables.append(table)
             if pending:
                 pending[-1].table_ids.append(table.id)
-                pending[-1].text_parts.append(f"[TABLE:{table.id}]")
 
     while pending:
         finished.append(pending.pop())
@@ -148,6 +199,7 @@ def build_document(
             page_end=max(pc.page_end, pc.page_start),
             references=references,
             table_ids=pc.table_ids,
+            has_general_override=general_override,
         )
         clauses.append(clause)
 
@@ -163,6 +215,16 @@ def build_document(
         }
     )
 
+    # A clause whose own heading IS an exhibit/appendix/etc. (e.g. this doc
+    # contains "EXHIBIT B" as a section) means that exhibit's content is present.
+    available_exhibits = sorted(
+        {
+            c.section_number
+            for c in clauses
+            if c.section_number and not re.match(r"^\d+(\.\d+)*$", c.section_number)
+        }
+    )
+
     return ParsedDocument(
         doc_id=doc_id,
         filename=filename,
@@ -171,7 +233,7 @@ def build_document(
         tables=all_tables,
         page_count=page_count,
         known_exhibit_labels=known_exhibits,
-        available_exhibit_labels=[],
+        available_exhibit_labels=available_exhibits,
     )
 
 

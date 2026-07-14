@@ -1,0 +1,102 @@
+{
+  "source": "Unfair ToS (LexGLUE)",
+  "total_examples": 9414,
+  "categories": [
+    {
+      "category": "Limitation of liability",
+      "example_count": 296,
+      "total_examples": 9414,
+      "example_clauses": [
+        "though tinder strives to encourage a respectful user experience through features like the double opt-in that only allows users to communicate if they have both indicated interest in one another , it is not responsible for the conduct of any user on or off of the services . \n",
+        "although tinder reserves the right to review and remove content that violates this agreement , such content is the sole responsibility of the user who posts it , and tinder can not guarantee that all content will comply with this agreement . \n",
+        "tinder shall have no liability to you or any third party in the event that tinder exercises any such rights . \n",
+        "you acknowledge that tinder is not required to provide a refund for any reason , and that you will not receive money or other compensation for unused virtual items when an account is closed , whether such closure was voluntary or involuntary . \n",
+        "tinder does not represent or warrant that ( a ) the service will be uninterrupted , secure or error free , ( b ) any defects or errors in the service will be corrected , or ( c ) that any content or information you obtain on or through the services will be accurate . \n"
+      ]
+    },
+    {
+      "category": "Unilateral termination",
+      "example_count": 236,
+      "total_examples": 9414,
+      "example_clauses": [
+        "this means we may add new product features or enhancements from time to time as well as remove some features , and if these actions do not materially affect your rights or obligations , we may not provide you with notice before taking them.we may even suspend the services entirely , in which event we will notify you in advance unless extenuating circumstances , such as safety or security concerns , prevent us from doing so . \n",
+        "tinder may terminate your account at any time without notice if it believes that you have violated this agreement . \n",
+        "the company may investigate and take any available legal action in response to illegal and / or unauthorized uses of the service , including termination of your account . \n",
+        "if we feel that your behavior towards any of our customer care representatives or other employees is at any time threatening or offensive , we reserve the right to immediately terminate your account . \n",
+        "tinder reserves the right to investigate and / or terminate your account without a refund of any purchases if you have misused the service or behaved in a way that tinder regards as inappropriate or unlawful , including actions or communications that occur off the service but involve users you meet through the service . \n"
+      ]
+    },
+    {
+      "category": "Unilateral change",
+      "example_count": 188,
+      "total_examples": 9414,
+      "example_clauses": [
+        "we may make changes to this agreement and to the services from time to time . \n",
+        "the most recent version of this agreement will be posted on the services under settings and also on gotinder.com , and you should regularly check for the most recent version . \n",
+        "this means we may add new product features or enhancements from time to time as well as remove some features , and if these actions do not materially affect your rights or obligations , we may not provide you with notice before taking them.we may even suspend the services entirely , in which event we will notify you in advance unless extenuating circumstances , such as safety or security concerns , prevent us from doing so . \n",
+        "tinder , in its sole discretion , reserves the right to charge fees for the right to access or use virtual items and / or may distribute virtual items with or without charge . \n",
+        "tinder may manage , regulate , control , modify or eliminate virtual items at any time . \n"
+      ]
+    },
+    {
+      "category": "Content removal",
+      "example_count": 118,
+      "total_examples": 9414,
+      "example_clauses": [
+        "this means we may add new product features or enhancements from time to time as well as remove some features , and if these actions do not materially affect your rights or obligations , we may not provide you with notice before taking them.we may even suspend the services entirely , in which event we will notify you in advance unless extenuating circumstances , such as safety or security concerns , prevent us from doing so . \n",
+        "we may delete any content , in whole or in part , that in our sole judgment violates this agreement or may harm the reputation of the service . \n",
+        "although tinder reserves the right to review and remove content that violates this agreement , such content is the sole responsibility of the user who posts it , and tinder can not guarantee that all content will comply with this agreement . \n",
+        "virtual items do not incur fees for non-use , however , the license granted to you in virtual items will terminate in accordance with the terms of this agreement , when tinder ceases providing the service or your account is otherwise closed or terminated . \n",
+        "while we do not and can not review every message or other material posted or sent by users of the service , and are not responsible for any content of these messages or materials , we reserve the right , but are not obligated , to delete , move , or edit messages or materials , including without limitation property profiles , public postings and messages , that we , in our sole discretion , deem to violate the code of conduct set out above or any applicable content guidelines , or to be..."
+      ]
+    },
+    {
+      "category": "Contract by using",
+      "example_count": 117,
+      "total_examples": 9414,
+      "example_clauses": [
+        "by creating a tinder account or by using the tinder imessage app ( `` tinder stacks '' ) , whether through a mobile device , mobile application or computer ( collectively , the `` service '' ) you agree to be bound by ( i ) these terms of use , ( ii ) our privacy policy and safety tips , each of which is incorporated by reference into this agreement , and ( iii ) any terms disclosed and agreed to by you if you purchase additional features , products or services we offer on the service (...",
+        "if you continue to use the services after the changes become effective , then you agree to the revised agreement . \n",
+        "the provision of virtual items for use in the service is a service provided by tinder that commences immediately upon the acceptance of your purchase of such virtual items . \n",
+        "by using the service in any manner , you agree to the above arbitration agreement . \n",
+        "when you ( `` you '' ) sign up with betterpoints.uk you agree to all of the terms and conditions of this agreement ( `` agreement '' ) . \n"
+      ]
+    },
+    {
+      "category": "Choice of law",
+      "example_count": 70,
+      "total_examples": 9414,
+      "example_clauses": [
+        "this agreement , and any dispute between you and the company , shall be governed by the laws of the state of texas without regard to principles of conflicts of law , provided that this arbitration agreement shall be governed by the federal arbitration act . \n",
+        "for users residing in the eu or european economic area or elsewhere where our arbitration agreement is prohibited by law , the laws of texas , u.s.a. , excluding texas 's conflict of laws rules , will apply to any disputes arising out of or relating to this agreement or the services . \n",
+        "this policy and consent forms part of our website terms of use and as such it shall be governed by and construed in accordance with the laws of england and wales . \n",
+        "these terms of use and any dispute or claim arising out of or in connection with them or their subject matter or formation ( including non-contractual disputes or claims ) shall be governed by and construed in accordance with the law of england and wales . \n",
+        "this agreement shall be governed by and construed in accordance with the laws of the state of delaware without regard to the conflict of laws provisions thereof . \n"
+      ]
+    },
+    {
+      "category": "Jurisdiction",
+      "example_count": 68,
+      "total_examples": 9414,
+      "example_clauses": [
+        "in the event that this arbitration agreement is for any reason held to be unenforceable , any litigation against the company ( except for small-claims court actions ) may be commenced only in the federal or state courts located in dallas county , texas . \n",
+        "you irrevocably agree that the courts of england and wales shall have exclusive jurisdiction to resolve any dispute or claim of whatever nature arising out of or relating to this policy and consent or otherwise to the use of your personal data , and that the laws of england and wales shall govern such dispute or claim . \n",
+        "the english courts will have jurisdiction over any claim arising from , or related to , any use of our services . \n",
+        "the english courts will have jurisdiction over any claim arising from , or related to , a visit to our site or use of our services . \n",
+        "to the extent permitted by law , these terms and conditions and the provision of our services shall be governed by and construed in accordance with dutch law and any dispute arising out of these general terms and conditions and our services shall exclusively be submitted to the competent courts in amsterdam , the netherlands . \n"
+      ]
+    },
+    {
+      "category": "Arbitration",
+      "example_count": 44,
+      "total_examples": 9414,
+      "example_clauses": [
+        "the exclusive means of resolving any dispute or claim arising out of or relating to this agreement ( including any alleged breach thereof ) or the service shall be binding arbitration administered by the american arbitration association under the consumer arbitration rules . \n",
+        "arbitration clause and class action waiver : if you live in the usa and select pay by mobile ( see paragraph 20 ) , a binding arbitration clause and class action waiver affects your rights to resolve a dispute with skype , its corporate affiliates , or other third parties including mobile phone carriers . \n",
+        "if you and a disputed party do not resolve any dispute by informal negotiation or in small claims court , any other effort to resolve the dispute will be conducted exclusively by binding arbitration governed by the united states federal arbitration act ( `` faa '' ) . \n",
+        "if you ever wish to seek any relief from us , you agree to do it only through arbitration , and you waive the ability to pursue class action . \n",
+        "( a ) u.s. residents : to the fullest extent permissible by law , with the exception of disputes pertaining to viber 's intellectual property rights and certain statutory claims that , pursuant to law , are not arbitrable , any dispute of any kind between you and viber arising under these terms shall be resolved through binding arbitration pursuant to the jams streamlined arbitration rules and procedures on an individual basis with no class relief . \n"
+      ]
+    }
+  ]
+}

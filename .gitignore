@@ -1,0 +1,25 @@
+# Backend
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.env
+backend/firebase-credentials.json
+backend/local_data/
+backend/.pytest_cache/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Raw reference datasets (CUAD, LEDGAR/LexGLUE, ContractNLI -- ~770MB combined,
+# re-downloadable, see README Installation step 6). Derived artifacts we
+# generate from them (backend/app/playbook/*.json) are still tracked since
+# the app needs them at runtime.
+/data/
+
+# Claude Code local session/plugin state -- not project content.
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

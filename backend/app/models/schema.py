@@ -56,6 +56,11 @@ class Clause(BaseModel):
     page_end: int
     references: list[Reference] = Field(default_factory=list)
     table_ids: list[str] = Field(default_factory=list)
+    # True for a "Notwithstanding anything to the contrary herein..." style
+    # override that names no specific target section -- it claims precedence
+    # over the agreement generally, which the dependency graph can't resolve
+    # to a specific edge but is itself a risk-relevant fact.
+    has_general_override: bool = False
 
 
 class ParsedDocument(BaseModel):

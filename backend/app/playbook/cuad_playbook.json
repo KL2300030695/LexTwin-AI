@@ -1,0 +1,444 @@
+{
+  "source": "CUAD v1",
+  "total_contracts": 510,
+  "categories": [
+    {
+      "category": "Governing Law",
+      "contracts_observed_in": 437,
+      "total_contracts": 510,
+      "example_clauses": [
+        "This Agreement is accepted by Company in the State of Nevada and shall be governed by and construed in accordance with the laws thereof, which laws shall prevail in the event of any conflict.",
+        "This Agreement is subject to all laws, regulations, license conditions and decisions of the Canadian Radio-television and Telecommunications Commission (\"CRTC\") municipal, provincial and federal governments or other authorities which are applicable to Rogers and/or Licensor, and which are now in force or hereafter adopted (\"Applicable Law\").",
+        "This Agreement shall be governed by laws of the Province of Ontario and the federal laws of Canada applicable therein.",
+        "All questions with respect to the construction of this Agreement, and the rights and liabilities of the Parties hereto, shall be governed by the laws of the State of Florida.",
+        "This Agreement shall be governed by and construed in accordance with the internal laws of the State of Nevada without giving effect to any choice or conflict of law provision or rule."
+      ]
+    },
+    {
+      "category": "Anti-Assignment",
+      "contracts_observed_in": 374,
+      "total_contracts": 510,
+      "example_clauses": [
+        "MA may not assign, sell, lease or otherwise transfer in whole or in party any of the rights granted pursuant to this Agreement without prior written approval of Company.",
+        "This Agreement may not be assigned, sold or transferred without the prior written consent of the other party.",
+        "Notwithstanding the foregoing, Rogers may, without consent, assign its rights and obligations under this Agreement in whole or in part to: (i) a person that directly or indirectly controls, is controlled by or is under common control with Rogers; or (ii) a purchaser of all or substantially all of the assets used in connection with the ROD Service. A change of control of Rogers shall not be considered an assignment of this Agreement.",
+        "Any purported assignment, sale, or transfer in contravention of this Section shall be null and void.",
+        "Any purported assignment, delegation or transfer in violation of this Section 11.7 is void from the outset and shall be of no force or effect."
+      ]
+    },
+    {
+      "category": "Cap On Liability",
+      "contracts_observed_in": 275,
+      "total_contracts": 510,
+      "example_clauses": [
+        "The foregoing states the entire liability of Company with respect to infringement of intellectual property rights.",
+        "Company's liability shall not exceed the fees that MA has paid under this Agreement.",
+        "Company is not liable for incidental, special or consequential damages for any reason (including loss of data or other business or property damage), even if foreseeable or if MA or Customer has advised of such a claim.",
+        "IN NO EVENT SHALL COMPANY BE LIABLE TO \"MA\", ITS CLIENTS, OR ANY THIRD PARTY FOR ANY TORT OR CONTRACT DAMAGES OR INDIRECT, SPECIAL, GENERAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES, INCLUDING BUT NOT LIMITED TO, LOSS OF PROFITS OR ANTICIPATED PROFITS AND LOSS OF GOODWILL, ARISING IN CONNECTION WITH THE USE (OR INABILITY TO USE) OR DISTRIBUTION OF THE TECHNOLOGY FOR ANY PURPOSE WHATSOEVER.",
+        "COMPANY'S SOLE AND EXCLUSIVE LIABILITY FOR THE WARRANTY PROVIDED IN SUBPARAGRAH (A) HEREOF SHALL BE TO CORRECT THE TECHNOLOGY TO OPERATE IN SUBSTANTIAL ACCORDANCE WITH ITS THEN CURRENT SPECIFICATIONS OR REPLACE, AT ITS OPTION, THE TECHNOLOGY NOT IN COMPLIANCE WITH COMPANY'S AND COMPANY' PUBLISHED SPECIFICATIONS REGARDING THE TECHNOLOGY; PROVIDED, ANY CLAIM FOR BREACH OF WARRANTY UNDER SUBPARAGRAPH (A) HEREOF MUST BE MADE IN WRITING WITHIN (90) DAYS FROM DATE OF SHIPMENT"
+      ]
+    },
+    {
+      "category": "License Grant",
+      "contracts_observed_in": 255,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Company hereby grants MA, during the term of this Agreement, the right to use Company and/or Company trade names, trademarks or service marks on Technology or in advertising or promotion relating directly to these products.",
+        "Subject to the terms and conditions of this Agreement, Company hereby grants to MA the right to advertise, market and sell to corporate users, government agencies and educational facilities (\"Clients\") for their own internal language learning, soft skills and communication purposes only, and not for remarketing or redistribution, and not for use in a data center environment for multiple users Clients, unless otherwise agreed to by Company prior in writing, the Technology listed in Schedule A of...",
+        "MA is authorized to resell Technology within the following territory according to the terms of the Agreement:\n\nWorldwide",
+        "During the Term, Rogers shall have the non-exclusive right to distribute and exhibit each Licensed Program on a VOD basis for a period of ninety (90) consecutive days, or such longer period as may be agreed to by Rogers and Licensor (the \"License Period\").",
+        "Licensor grants to Rogers the non-exclusive license and right to distribute and exhibit in Canada (the \"Territory\") all entertainment programming to which Licensor owns or controls the VOD distribution and exhibition rights in the Territory (collectively, \"Licensed Programs\") to residential subscribers of Rogers' digital cable television service on a Video-on-Demand (\"VOD\") basis."
+      ]
+    },
+    {
+      "category": "Audit Rights",
+      "contracts_observed_in": 214,
+      "total_contracts": 510,
+      "example_clauses": [
+        "MA shall keep accurate records of the sales of the Technology and Maintenance, including Client Registration Cards and shall make these records available for review by a representative of Company within ten (10) business days following the end of each month.",
+        "During the Term, and for a period of twelve (12) months thereafter, Rogers (and its representatives) shall have the right, upon reasonable prior written notice to Licensor, and during regular business hours, to inspect and/or audit Licensor's books and records to confirm compliance with Licensor's obligations under this Section.",
+        "Each of the Parties may, at its own expense, audit the other Party's compliance with this Agreement, including but not limited to, auditing the other Party's representations and warranties.",
+        "Licensor will pay the cost of such audits unless an audit reveals a discrepancy in payment or reporting of five percent (5%) or more, in which case the Licensee shall reimburse the Licensor for the reasonable cost of the audit.",
+        "Licensee shall make such books and records, and appropriate personnel, available during normal business hours for audit by Licensor or its authorized representative; provided that Licensor shall:   (a) provide Licensee with reasonable prior notice of any audit;   (b) undertake an audit no more than once per calendar year, unless a prior audit has disclosed a balance due; and   (c) conduct or cause to be conducted such audit in a manner designed to minimize disruption of Licensee's normal..."
+      ]
+    },
+    {
+      "category": "Termination For Convenience",
+      "contracts_observed_in": 183,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Notwithstanding any other provision of this Agreement, Rogers may terminate this Agreement, at any time, upon sixty (60) days' prior written notice to Licensor.",
+        "ETON has the right to terminate this Agreement after approval of the Dossier or marketing application for the Product (or added new product), at its sole discretion, upon providing one hundred eighty (180) days' written notice to Aucta.",
+        "Accordingly, either Party may terminate this Agreement or all/part of a Project for any reason and at any time upon giving the other Party sixty (60) days prior written notice.",
+        "This Agreement may be terminated by either party for any reason or no reason, whether or not extended beyond the initial term, by giving the other party written notice ninety (90) days in advance.",
+        "Company at its sole discretion may at any time alter or cease providing the Customer Service which it has agreed to provide to Client relating to Client Website pursuant to this Agreement without any liability to Company."
+      ]
+    },
+    {
+      "category": "Post-Termination Services",
+      "contracts_observed_in": 182,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Notwithstanding the foregoing, in the event the expiration of this Agreement or termination of this Agreement by Musclepharm pursuant to paragraph 9(a), MusclePharm shall be entitled to sell-off the remaining Licensed Products for six (6) months after such expiration of this Agreement pursuant to paragraph 4(d) herein and shall continue to pay Endorser the Royalty set forth in paragraph 7 herein.",
+        "MusclePharm's obligations for the payment of a Royalty and the Guaranteed Minimum Royalty (as defined below) shall survive expiration or termination of this Agreement and will continue for so long as MusclePharm continues to manufacture, sell or otherwise market the Licensed Products.",
+        "During the Term, the right to use Endorser's Name and Appearance Rights granted to MusclePharm in this Section shall extend for six (6) months beyond the expiration of this Agreement (the \"Use-up Period\").",
+        "During the Term of this Agreement and during any sell-off period, MusclePharm shall pay Lender a royalty (the \"Royalty\") of 10% on Net Sales (as defined below) of Licensed Products sold through its wholesale Distribution Channels or retail Distribution Channels, as the case may be and 10% on Net Sales of the Training Video and any Products sold in connection with any Training Video as contemplated pursuant to the last sentence of Section 4(a)(i) above.",
+        "MusclePharm shall create no new advertising during the Use-up Period using Endorser's Name and Appearance, but shall have the right to use during the Use-up Period Endorser's Name and Appearance in advertisements and promotional materials created before the expiration date of this Agreement."
+      ]
+    },
+    {
+      "category": "Exclusivity",
+      "contracts_observed_in": 180,
+      "total_contracts": 510,
+      "example_clauses": [
+        "During the License Term (which is identified in the Deal Terms), Producer agrees that ConvergTV has the exclusive right to exercise the rights granted to it under this Agreement with respect to the Program, including those in Section 1, within the Licensed Territory.",
+        "Subject to Licensee's on\u00adgoing compliance with Section 3.2 and all other terms and conditions of this Agreement, Licensor grants to Licensee an exclusive (save for rights reserved to Licensor hereunder), non-transferable (except as provided in Section 11.7) and non- sublicensable license, during the License Term, to reproduce, perform, display, transmit and distribute the Licensed Content on the Licensee Siteand Related Media intended solely for use by End Usersin the Territory within the scope...",
+        "During the Term, eDiets will not buy, sell, display or distribute advertising from (including, but not limited to, banner ads, buttons, badges, text links, hyperlinks or editorial mentions) or otherwise promote any Women.com Compettive Company on any page of the eDiets Site that is within two clicks from the Gateway Page of the Diet Center.",
+        "For purposes of this Agreement, \"Competitive Company\" means any company that eDiets reasonably presents as, and Women.com reasonably agrees is, a direct competitor to eDiets by distributing on-line content principally relating to diets and diet counseling, including, but not limited to, Weight Watchers, Jenny Craig, NutriSystem, Nutrio, Asimba, DietSmart and uMagic.",
+        "For purposes of this Agreement, \"Women.com Competitive Company\" means any company that Women.com reasonably presents as, and eDiets reasonably agrees is, a direct competitor to Women.com by providing an on-line portal for women, including, but not limited to, Oxygen Media and iVillage,"
+      ]
+    },
+    {
+      "category": "Renewal Term",
+      "contracts_observed_in": 176,
+      "total_contracts": 510,
+      "example_clauses": [
+        "This agreement shall begin upon the date of its execution by MA and acceptance in writing by Company and shall remain in effect until the end of the current calendar year and shall be automatically renewed for successive one (1) year periods unless otherwise terminated according to the cancellation or termination provisions contained in paragraph 18 of this Agreement.",
+        "At Rogers' option, this Agreement shall renew for a subsequent term of two (2) years on the terms and conditions herein (the \"Renewal Term\").",
+        "License Term Perpetual, unlimited runs x Other: 2 years Commencing: November 15, 2012",
+        "Thereafter, this Agreement shall renew automatically for one (1) additional three (3) year period (the \"Renewal Term\" and collectively, together with the Initial Term, the \"Term\") unless either party provides the other with written notice of non-renewal at least ninety (90) days before the expiration of the Initial Term].",
+        "This agreement shall automatically renew for additional successive terms of twelve (12) months each at the end of the Initial Term (\"Renewal Terms\"), unless either party notifies the other in writing at least sixty (60) days prior to the end of the Initial Term."
+      ]
+    },
+    {
+      "category": "Revenue/Profit Sharing",
+      "contracts_observed_in": 166,
+      "total_contracts": 510,
+      "example_clauses": [
+        "For so long as Rogers is required by Applicable Law to pay copyright royalties relating to Licensed Programs hereunder, Licensor shall reimburse Rogers for 50% of any such royalties actually paid by Rogers, calculated on a rolling basis during the Term and payable monthly.",
+        "Rogers shall pay to Licensor a fee (the \"License Fee\"), which shall be equal to fifty (50)% of Retail Revenues.",
+        "In consideration for various services and activities that Rogers performs for the benefit of Licensor during the Term, Licensor agrees to pay to Rogers an amount which shall be equal to ten (10)% of License Fees, calculated on a rolling basis during the Term and payable monthly.",
+        "For so long as Rogers is required by Applicable Law to contribute a percentage of its gross annual revenues from the ROD Service to an independently-administered Canadian program production fund, Licensor shall reimburse Rogers for 50% of the amount required to be remitted to such production fund by Rogers in respect of the exhibition of Licensed Programs (the \"Production Fund Commitment\").",
+        "Revenue Share as specified in this CONTENT DISTRIBUTION AND LICENSE AGREEMENT."
+      ]
+    },
+    {
+      "category": "Insurance",
+      "contracts_observed_in": 166,
+      "total_contracts": 510,
+      "example_clauses": [
+        "MusclePharm shall, throughout the Term of the Agreement and for a period of not less than four years thereafter, obtain and maintain at its own cost and expense from a qualified insurance company licensed to do business in California and New York, a commercial general liability insurance policy including coverage for contractual liability (applying to the terms and conditions of this agreement), product liability, personal injury liability, and advertiser's liability, in a form approved by the...",
+        "Without limiting the generality of the foregoing, such policy shall provide protection against any and all claims, demands, and causes of action arising out of any defects or failure to perform, alleged or otherwise, of the Products and Licensed Products or any material used in connection therewith or any use thereof.",
+        "MusclePharm shall be responsible to pay the deductible under any such insurance policies with respect to any claims made under such policies.",
+        "MusclePharm agrees to furnish the AS Parties a certificate of insurance evidencing same within thirty (30) days after execution of this Agreement and, in no event, shall MusclePharm manufacture, distribute, advertise, or sell the Licensed Products prior to receipt by the AS Parties of such evidence of insurance.",
+        "The policy shall provide for ten (10) days notice to the AS Parties from the insurer by Registered or Certified Mail, return receipt requested, in the event of any modification, cancellation, or termination thereof."
+      ]
+    },
+    {
+      "category": "Minimum Commitment",
+      "contracts_observed_in": 165,
+      "total_contracts": 510,
+      "example_clauses": [
+        "INITIAL ORDER COMMITMENT - MA commits to purchase a minimum of 100 Units in aggregate within the Territory within the first six months of term of this Agreement.",
+        "Licensor shall make available to Rogers, on a free trial basis and at no cost to Rogers, not less than ten (10) Licensed Programs at all times during the Term (each, a \"Promotional Program\") for distribution and exhibition on the ROD Service to promote the Licensed Programs and the ROD Service.",
+        "If Women.com does not deliver the shortfall within sixty (60) days of the end of the applicable quarter, eDiets may terminate this Agreement in its entirety immediately or authorize Women.com to deliver the shortfall within an extended number of days to be mutually agreed upon by the parties (the \"Make Good Period\").",
+        "Notwithstanding the foregoing, Women.com does guarantee a minimum of 13,000,000 impressions promoting eDiets per year on the Diet Center.",
+        "If Women.com does not deliver at least 80% of the Quarterly Impression Guarantee for Advertsing Promotions as set forth on Exhibit B (11,250,000 per quarter; 45,000,000 per year); 80% of the Quarterly Impression Guarantee for the Diet Center Logo as set forth on Exhibit B (3,250,000 per quarter; 13,000,000 per year); and 80% of the Quarterly Impression Guarantee for Other Campaigns as set forth on Exhibit B (3,000,000 per quarter; 12,000,000 per year) each quarter following the Launch Date,..."
+      ]
+    },
+    {
+      "category": "Non-Transferable License",
+      "contracts_observed_in": 138,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Subject to Licensee's on\u00adgoing compliance with Section 3.2 and all other terms and conditions of this Agreement, Licensor grants to Licensee an exclusive (save for rights reserved to Licensor hereunder), non-transferable (except as provided in Section 11.7) and non- sublicensable license, during the License Term, to reproduce, perform, display, transmit and distribute the Licensed Content on the Licensee Siteand Related Media intended solely for use by End Usersin the Territory within the scope...",
+        "Licensor grants to Licensee a limited, non-exclusive, non-transferable (except as provided in Section 11.7) and non-sublicensable royalty-free license during the Term to those of Licensor's Marks designated by Licensor from time to time to:   (i)display such Marks on the Licensee Site: (x) with the Licensed Content to provide source attribution; or (y) as links to the Licensed Content;   (ii)comply with its express obligations under this Agreement; and   (iii)advertise, market and promote the...",
+        "Women.com hereby grants eDiets a non-exclusive, non-transferable, royalty-free worldwide right and license without the right to sublicense to use the Women.com Marks during the Term solely in connection with (i) the fulfillment of eDiets' obligations under this Agreement, and (ii) in advertising and marketing collateral related to this Agreement",
+        "eDiets hereby grants to Women.com, subject to the terms and conditions of this Agreement, a non-exclusive, nontransferable, worldwide, royalty-free license to use, copy, reproduce and display the editorial content and other data, branding and other identification provided by eDiets to Women.com in connection with this Agreement (the \"eDiets Content\") on the Women.com Sites: (i) for publication in the Diet Center and elsewhere throughout the Women.com Sites; (ii) for the promotion of eDiets and...",
+        "eDiets hereby grants Women.com a non-exclusive, non-transferable, royalty-free worldwide right and license without the right to sublicense to use the eDiets Marks during the Term solely in connection with (i) the fulfillment of Women.com's obligations under this Agreement, and (ii) in advertising and marketing collateral related to this Agreement."
+      ]
+    },
+    {
+      "category": "Ip Ownership Assignment",
+      "contracts_observed_in": 124,
+      "total_contracts": 510,
+      "example_clauses": [
+        "All such works based upon the Trademarks and/or Name and Appearance Rights shall be prepared by an employee-for- hire of MusclePharm (under MusclePharms's sole supervision, responsibility, and monetary obligation) or as a work-for-hire by a third party who assigns to the AS Parties in writing and in perpetuity throughout the universe all right, title, and interest in the same provided however, nothing herein shall preclude MusclePharm from using any of the intellectual property to be retained...",
+        "MusclePharm agrees that any copyrights in works created based upon the Trademarks and/or Name and Appearance Rights shall become the rights of the AS Parties (as among them to be determined among them)",
+        "MusclePharm irrevocably and unconditionally transfers and assigns to the AS Parties in perpetuity and throughout the universe any and all of MusclePharm's right, title, and interest, if any (including, without limitation, the rights generally known as 'moral rights') in and to all works, including any packaging, advertising and promotional materials, and other materials based upon the Trademarks and/or Name and Appearance Rights, all of which shall, upon their creation, become and remain the...",
+        "if such rights comprise (i) intellectual property that constitutes predominantly communication software or related communication hardware or other technology, including without limitation, any upgrades and Improvements thereof, or (ii) any \"user\" names, and other \"user profile\" information included within the Company-Skype Branded Application (i.e., dates of birth, addresses, languages spoken, etc.), of Company-Skype Branded Customers collected as part of the registration process for the...",
+        "The right, title and interest in and to the Company-Skype Branded Content shall be owned by Skype to the extent made up of the Skype Rights which have been integrated into the Company-Skype Branded Content, and by the Online Group to the extent made up of the Group Rights which have been integrated into the Company-Skype Branded Content."
+      ]
+    },
+    {
+      "category": "Change Of Control",
+      "contracts_observed_in": 121,
+      "total_contracts": 510,
+      "example_clauses": [
+        "For purposes of the preceding sentence, and without limiting its generality, any merger, consolidation or reorganization involving Licensee (regardless of whether Licensee is a surviving or disappearing entity) will be deemed to be a transfer of rights, obligations or performance under this Agreement for which Licensor's prior written consent is required.",
+        "The term of this Agreement shall be effective as of the date first stated above and shall continue for a term of three (3) years, unless terminated earlier in accordance with the provisions of this Agreement (the \"Term\"); provided, however, that PrimeCall may elect to terminate this Agreement, upon thirty (30) days' written notice, at any time from and after the time that collectively RSL Communications, Ltd. and/or its Affiliates holds less than fifty percent (50%) of the voting control of...",
+        "For purposes of this Agreement, \"Change in Control\" means a merger or consolidation of the party with, or any sale of all or substantially all of the assets of such party to, any other person, corporation or entity, unless as a result of such merger, consolidation or sale of assets the holders of such party's voting securities prior thereto hold at least fifty percent (50%) of the total voting power represented by the voting securities of the surviving or successor corporation after such...",
+        "Nothwithstanding the foregoing, this Agreement may be assigned without the AS Parties' consent by MusclePharm in connection with a change of control transaction; provided that the acquirer of MusclePharm shall have financial resources substantially similar or greater than MusclePharm and shall specifically assume the obligations of MusclePharm under this Agreement in writing prior to the consummation of the change of control transaction.",
+        "Neither party shall voluntarily or by operation of law assign or otherwise transfer the rights and/or obligations incurred pursuant to the terms of this Agreement without the prior written consent of the other party."
+      ]
+    },
+    {
+      "category": "Non-Compete",
+      "contracts_observed_in": 119,
+      "total_contracts": 510,
+      "example_clauses": [
+        "During the Term, (a) Women.com will not buy, sell, display, distribute advertising from (including, but not limited to, banner ads, buttons, badges, text links, hyperlinks or editorial mentions) or otherwise promote a Competitive Company on any page of the Diet Center;<omitted>(c) Women.com will not enter into a relationship with a Competitive Company that involves any of the following; (i) custom developed mini or micro web sites; (ii) content integration; (iii) discounts offered only to...",
+        "Products. Any failure of Endorser to disclose such conflicting interests, or any breach of this Section, shall be deemed a material breach of the Agreement.",
+        "Endorser's duty not to compete with the business of MusclePharm shall continue for a period of one year following the expiration or termination of this Agreement.",
+        "Endorser's duty not to compete with the business of MusclePharm shall continue for a period of one year following the expiration or termination of this Agreement. Endorser's non-competition obligation shall not be required in the event of a material breach of this Agreement by MusclePharm.",
+        "Endorser shall not use or provide endorsements or testimonials for products that compete with MusclePharm Products or the Licensed Products."
+      ]
+    },
+    {
+      "category": "Notice Period To Terminate Renewal",
+      "contracts_observed_in": 111,
+      "total_contracts": 510,
+      "example_clauses": [
+        "This Agreement may be terminated by either party at the expiration of its term or any renewal term upon thirty (30) days written notice to the other party.",
+        "Notwithstanding the foregoing, if, at the expiry of this Agreement following the Initial Term or the Renewal Term (if any), as applicable, Licensor and Rogers have not executed a new agreement governing the VOD distribution and exhibition of Licensed Programs and Rogers (or its permitted assigns) continues to distribute and exhibit Licensed Programs on the ROD Service following such expiry, such continued distribution and exhibition shall be governed by the terms of this Agreement in effect at...",
+        "Thereafter, this Agreement shall renew automatically for one (1) additional three (3) year period (the \"Renewal Term\" and collectively, together with the Initial Term, the \"Term\") unless either party provides the other with written notice of non-renewal at least ninety (90) days before the expiration of the Initial Term].",
+        "This agreement shall automatically renew for additional successive terms of twelve (12) months each at the end of the Initial Term (\"Renewal Terms\"), unless either party notifies the other in writing at least sixty (60) days prior to the end of the Initial Term.",
+        "This Agreement shall automatically continue following the Initial Term, for an additional period of three (3) years, unless a party to this Agreement provides written notice of termination to the other parties at least sixty (60) days prior to the expiration of the Initial Term or this Agreement (\"Extended Term\" and, with the Initial Term, \"Term\")."
+      ]
+    },
+    {
+      "category": "Uncapped Liability",
+      "contracts_observed_in": 111,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Except with respect to any claim or liability arising from an infringement of any third party intellectual property right, in no event shall either party be liable for any special, indirect, consequential, punitive or incidental damages of any kind.",
+        "The provisions of Section 9.1 and Section 9.2 will not apply to limit the Licensee's indemnification obligations under Section 8.2, or in the case of Licensee's gross negligence or wilful misconduct.",
+        "EXCEPT FOR THE ABOVE INDEMNIFICATION OBLIGATIONS AND FOR BREACHES OF SECTION 14, NEITHER PARTY SHALL BE LIABLE TO THE OTHER FOR ANY INCIDENTAL, CONSEQUENTIAL, SPECIAL OR PUNITIVE DAMAGES ARISING OUT OF THIS AGREEMENT (INCLUDING, BUT NOT LIMITED TO, LOSS OF PROFITS), WHETHER IN AN ACTION OR ARISING OUT OF BREACH OF CONTRACT, TORT OR ANY OTHER CAUSE OF ACTION EVEN IF SUCH PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.",
+        "THE LIMITATIONS ON LIABILITY FOR DAMAGES SET FORTH IN THIS AGREEMENT SHALL BE INAPPLICABLE TO EACH PARTY'S CONTRACTUAL OBLIGATION TO INDEMNIFY THE OTHER PARTY AS SET FORTH IN SECTIONS 2.6 AND 13.",
+        "EXCEPT FOR BREACHES OF SECTION 11 OR BREACHES OF ANY LICENSE GRANT SET FORTH IN THIS AGREEMENT, IN NO EVENT WILL EITHER PARTY BE LIABLE TO THE OTHER FOR ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES, WHETHER BASED ON BREACH OF CONTRACT, TORT (INCLUDING NEGLIGENCE) OR OTHERWISE, WHETHER OR NOT THAT PARTY HAS BEEN ADVISED OF, KNEW, OR SHOULD HAVE KNOWN OF, THE POSSIBILITY OF SUCH DAMAGE AND NOTWITHSTANDING THE FAILURE OF ESSENTIAL PURPOSE OF ANY LIMITED REMEDY."
+      ]
+    },
+    {
+      "category": "Covenant Not To Sue",
+      "contracts_observed_in": 100,
+      "total_contracts": 510,
+      "example_clauses": [
+        "At no time during the term of the Agreement or thereafter shall eDiets attack, challenge or file any application with respect to any Women.com Mark.",
+        "At no time during the term of the Agreement or thereafter shall Women.com attack, challenge or file any application with respect to any eDiets Mark.",
+        "Women.com acknowledges that eDiets owns all right, title and interest in and to the eDiets Content, and Women.com shall not now or in the future contest the validity of the eDiets' ownership rights in and to the eDiets Content.",
+        "Integrity recognizes TL's title to the                   TL Trademarks and will not at any time do or suffer to be done                   any act or thing which will in any way impair TL's rights in                   and to the TL Trademarks.",
+        "TL recognizes Integrity's title                   to the Integrity Trademarks and will not at any time do or                   suffer to be done any act or thing which will in any way                   impair Integrity's rights in and to the Integrity Trademarks."
+      ]
+    },
+    {
+      "category": "Rofr/Rofo/Rofn",
+      "contracts_observed_in": 85,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Should Licensee agree to be the vendor for an Additional Title, Licensor and Licensee will negotiate in good faith to mutually agree upon the pricing and terms for each Additional Title in an amendment to this Agreement.",
+        "If, during the Term, Licensor develops or obtains the rights to license any live action or animated feature-length motion picture (each an \"Additional Title\"), Licensor shall give Licensee the first right of negotiation for each Additional Title (i.e., the preferred vendor).",
+        "Licensor will promptly provide written notice to Licensee in which Licensor lists each Additional Title.",
+        "eDiets shall have fifteen (15) days from the giving of such notice to agree to participate in the applicable Diet Promo upon the terms and conditions specified in the notice by giving written notice of its agreement to Women.com.",
+        "During the Term, Women.com agrees to give eDiets the right of first refusal to participate in all diet and diet-counseling related promotion opportunities created or otherwise made available by Women.com on channels or sub-channels created after the Effective Date of this Agreement, including sponsorships, anchor placements and any other content integration opportunities (\"Diet Promos\")."
+      ]
+    },
+    {
+      "category": "Volume Restriction",
+      "contracts_observed_in": 82,
+      "total_contracts": 510,
+      "example_clauses": [
+        "TL may purchase from Integrity limited quantities of the                   Product for its promotional use, at the Manufacturing cost set                   forth in paragraph 3(a) above, provided the quantity of such                   purchases does not exceed seven percent (7%) of the total                   royalty bearing units of such Product title purchased by TL,                   TL warrants that any units so purchased, whether or not                   labeled \"promotional only\" or...",
+        "During the Term (including any renewal Term, if any), in the event that MusclePharm shall determine to develop and introduce a new Product into the market, MusclePharm shall provide the AS Parties with a sample of the name, design, marketing plan and an actual sample of such new Product (the \"Sample\") and the AS Parties shall have a right of first refusal (exercisable by written notice to MusclePharm within 15 days after receipt of the Sample) to include such new Product in the AS Product Line,...",
+        "During the Term of this Agreement, and for a period of two (2) years thereafter, Aucta shall not research, develop, manufacture, file, sell, market, or distribute more than two products containing the active ingredient Lamotrigine; nor will Aucta directly or indirectly assist any other Person or entity in carrying or any such activities.",
+        "In addition to any other responsibilities stated in this Agreement, Company will: (a) Provide, at Distributor's reasonable request and without charge, up to 10 hours of training with regard to any characteristics of the Products that Distributor deems reasonably necessary for Distributor and its employees and agents to fulfill the purposes of Distributor's appointment,",
+        "In the event any Production Session exceeds eight (8) hours in duration ESSI and Talent will negotiate in good faith additional compensation to Talent for time in excess of eight (8) hours."
+      ]
+    },
+    {
+      "category": "Competitive Restriction Exception",
+      "contracts_observed_in": 76,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Notwithstanding the foregoing, Women.com shall be entitled to (aa) provide mini and micro web sites and Women.com promotions and sponsorships to Jenny Craig; (bb) sell, display, or distribute advertisements, including banner advertisements, newsletter placements, internet radio, commerce placements and market research, or otherwise promote Competitive Companies on pages other than the Gateway Page of the Diet Center.",
+        "Notwithstanding the foregoing, the following will not be a breach of this Agreement: (i) Endorser's performance of services or appearing in the news or informational portion of any radio, TV or film or entertainment program regardless of products or services therein or sponsorship thereof; (ii) Endorser's participation in movies or TV programs as well as merchandising, commercial tie-ins and/or product placements utilizing Endorser, or (iii) Endorser's performance of services, appearance or use...",
+        "Notwithstanding the foregoing or anything else contained herein, this Agreement shall not prevent or shall in any manner restrict Endorser from advertising, marketing and or endorsing products (or other companies which manufacture such products) which incidentally contain dietary supplements (including without limitation protein, vitamins, minerals, amino acids, herbs, legal performance enhancing substances) provided the primary purpose of such product or company is not to sell or market a...",
+        "In the case of Skype and its Affiliates, the foregoing restrictions shall not apply:\n\n8.2.1 (a) (i) for the avoidance of doubt, to the operations of Skype as existing now or hereafter undertaken with respect to any non co- branded version of the Skype Software distributed by Skype except where those operations provide for distribution in the PRC of the Skype Software in simplified Chinese by a Primarily PRC Based Service Provider, or (ii) the operations of Skype customers and Affiliates under...",
+        "For purposes of clarity, the foregoing does not prevent   Conformis from granting any license, release, covenant not to sue or other immunity to any third party under any Patents, including   any such immunity that would authorize manufacture, use or sale of Patient-Specific Instrumentation for Off-The-Shelf Knee   Implants outside the Buyer Field."
+      ]
+    },
+    {
+      "category": "Warranty Duration",
+      "contracts_observed_in": 75,
+      "total_contracts": 510,
+      "example_clauses": [
+        "COMPANY'S SOLE AND EXCLUSIVE LIABILITY FOR THE WARRANTY PROVIDED IN SUBPARAGRAH (A) HEREOF SHALL BE TO CORRECT THE TECHNOLOGY TO OPERATE IN SUBSTANTIAL ACCORDANCE WITH ITS THEN CURRENT SPECIFICATIONS OR REPLACE, AT ITS OPTION, THE TECHNOLOGY NOT IN COMPLIANCE WITH COMPANY'S AND COMPANY' PUBLISHED SPECIFICATIONS REGARDING THE TECHNOLOGY; PROVIDED, ANY CLAIM FOR BREACH OF WARRANTY UNDER SUBPARAGRAPH (A) HEREOF MUST BE MADE IN WRITING WITHIN (90) DAYS FROM DATE OF SHIPMENT.",
+        "Within Seven (7) days of receipt of such Products, Distributor will notify Company of any shortages, defects, non-conformance, and Company will promptly replace such Products free of charge.",
+        "The Distributor shall have thirty (30) days (the \"Inspection Period\") upon receipt of each shipment to inspect and test the Products.",
+        "The warranty period for workmanship and all Services provided<omitted>hereunder, including the Build Services contemplated in the Build Addendum, shall commence upon Location Acceptance of the applicable Cell Site and continue for a period equal to [***] from Location Acceptance of the applicable Cell Site (the \"Workmanship Warranty Period\").",
+        "The warranty period for all Material (excluding AT&T Provided Equipment) shall commence upon Delivery of such Material to Vendor from the OEM and shall continue for a period equal to the longer of (i) [***] or (ii) the applicable warranty period actually received by Vendor from the OEM for such Material Vendor acquired directly from the OEM, including the Vendor Provided Equipment as defined in the Build Addendum (the \"Material Warranty Period\")."
+      ]
+    },
+    {
+      "category": "Irrevocable Or Perpetual License",
+      "contracts_observed_in": 70,
+      "total_contracts": 510,
+      "example_clauses": [
+        "In exchange for the Share Consideration, Licensor hereby grants to Licensee a non-exclusive, royalty-free, perpetual and non-perpetual license (subject to the duration and scope, and format limitations for which Licensor has the rights to each Title as specified in Schedule A1-A6 of Schedule A) to:\n\ni. license, exhibit, distribute, reproduce, transmit, perform, display, and otherwise exploit and make available each Title within the Territory in any language by VOD (including SVOD, TVOD, AVOD...",
+        "Sections 2(a) [License Grant], 2(b) [Sublicensing], 2(c) [Display of Titles], 2(d) [Removal of Titles], 3, and 11 shall survive the expiration or termination of this Agreement: (i) in perpetuity with respect to Titles for which the licenses granted in Section 2(a) [License Grant] are perpetual; and (ii) for the duration of the applicable license term specified in Schedule A with respect to Titles for which the license term specified in Schedule A extends beyond the expiration or termination of...",
+        "ExxonMobil grants FCE a worldwide, non-exclusive, royalty-free, perpetual, irrevocable (except as stated in Paragraphs 12.03 (Failure to Perform), 12.04 (Other Termination), and 12.05 (Bankruptcy)), sub-licensable, non-transferable (except pursuant to Article 14 (Assignment)), right and license to practice Program Results solely for Power Applications and Hydrogen Applications.",
+        "ExxonMobil grants FCE a worldwide, non-exclusive, royalty-free, non-sub- licensable (except as set forth herein), perpetual, irrevocable (except as stated in Paragraphs 12.03 (Failure to Perform), 12.04 (Other Termination), and 12.05 (Bankruptcy)), non-transferable (except pursuant to Article 14 (Assignment)) right and license to practice ExxonMobil Background Information and ExxonMobil Background Patents for Generation 1 Technology in Carbon Capture Applications, solely to conduct Authorized...",
+        "ExxonMobil grants FCE a worldwide, non-exclusive, royalty-free, non-sub-licensable (except as set forth herein), perpetual, irrevocable (except as stated in Paragraphs 12.03 (Failure to Perform), 12.04 (Other Termination), and 12.05 (Bankruptcy)), non- transferable (except pursuant to Article 14 (Assignment)) right and license to practice ExxonMobil Background Information and ExxonMobil Background Patents for Generation 2 Technology in Power Applications and Hydrogen Applications."
+      ]
+    },
+    {
+      "category": "Liquidated Damages",
+      "contracts_observed_in": 61,
+      "total_contracts": 510,
+      "example_clauses": [
+        "In case of violation of this article, the Party shall pay to the other Party an equivalent of eighteen (18) months gross salary of the respective employee.",
+        "If any such action occurs and results in an employee accepting employment with the other Party, the Party with whom the employee accepts employment agrees to pay to the other Party as liquidated damages, an amount equal to two times that particular individual's annual salary and bonus.",
+        "COMPANY will pay JHU a fee equal one percent (1%) of the Aggregate Consideration received by the COMPANY, or the total amount received by stockholders of COMPANY, upon the occurrence of a Liquidity Event.",
+        "Solely in the event that Dova has terminated this Agreement pursuant to Section 12.3.1 and notwithstanding anything else herein, in consideration of the promotion services performed by Valeant during the Term, with respect to the Tail Period, Dova shall make payments to Valeant in an amount equal to [***] of the amounts that would have been payable by Dova to Valeant with respect to such Tail Period pursuant to Section 6.1 had the Agreement not been so terminated.",
+        "In addition, CHT may terminate this Agreement and the rights granted hereunder, in whole or in part, and without prejudice to enforcement of any other legal right or remedy (including any express termination right set forth elsewhere in this Agreement), at any time without cause, by providing at least thirty (30) Business Days prior written notice to Ehave, but subject to payment of a termination fee equal to an amount set out in Schedule 6."
+      ]
+    },
+    {
+      "category": "No-Solicit Of Employees",
+      "contracts_observed_in": 59,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Without the prior written consent of the other Party, a Party shall not at any time while this Agreement is in force and for a one-year period after termination of this Agreement either for itself or on behalf of any other company solicit, induce or cause any employee of the other Party or any Affiliated Company of this other Party who has been a representative of or employed by the other Party in connection with this Agreement to leave such employment.",
+        "Each Party agrees that during the term of this Agreement and for a period of twelve (12) consecutive months thereafter they shall not, directly, solicit, engage, compensate, induce in any way or hire for employment or other representation, any officer, employee, consultant or other representative employed or retained by the other Party or assist any other person or entity to do any of the foregoing.",
+        "The Contractor and the Customer will not be allowed to employ employees of the other party, directly or indirectly, for one (1) year from the date the employee has ceased to be employed by the other party.",
+        "Manufacturer may terminate its obligation to provide any Technical Support with respect to the applicable Product under this Agreement if Customer or any of its Affiliates hires any Manufacturer Personnel involved in providing Technical Support to Customer hereunder (without limiting any applicable non-solicitation obligations of Customer pursuant to the Business Combination Agreement).",
+        "[***], neither Valeant nor Dova (nor any of their respective Affiliates) shall directly or indirectly solicit for hire or employee as an employee, consultant or otherwise any of the other Party's professional personnel who have had direct involvement with the JSC, with the Valeant Activities under this Agreement (which, in the case of Valeant, includes the Field Force Personnel) or with Dova's commercialization activities for the Product, without the other Party's prior written consent."
+      ]
+    },
+    {
+      "category": "Affiliate License-Licensee",
+      "contracts_observed_in": 59,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Producer further grants to ConvergTV the right and license to Distribute the Program on any ConvergTV channel, and/or other distribution outlets, that exists today or that is created or developed in the future and this right includes the right to Distribute on any channels of a ConvergTV affiliate and/or other distribution outlets without limitation.",
+        "Notwithstanding the foregoing, upon the prior written approval of Skype, which approval may be withheld in its sole discretion, the Company shall be permitted to sublicense its rights hereunder to a wholly-owned Subsidiary, a majority-owned Subsidiary of Tom Holding, or to an unaffiliated third party distributor or reseller, for the same purpose and under the same terms and conditions as the license set forth herein.",
+        "Notwithstanding the foregoing, upon the prior written approval of Online BVI, which approval may be withheld in its sole discretion, the Company shall be permitted to sublicense its rights hereunder to a wholly-owned Subsidiary of the Company or a majority-owned Subsidiary of Tom Holding, for the same purpose and under the same terms and conditions as the license set forth herein.",
+        "Except as specifically provided in the Distribution Agreement, Conformis shall be prohibited from   developing or assisting another in developing, or causing another to develop, Patient-Specific Instrumentation for Off-The-Shelf   Knee Implants for any Third Party in the field of orthopedics until January 1, 2032 (or earlier, to the extent set forth in Section   2.3.3.4 or Section 2.3.5 of the Distribution Agreement), with the exception that Conformis (including any entity involved in a  ...",
+        "To the extent not already granted pursuant to the License Agreement, FCE grants ExxonMobil and its Affiliates a worldwide, non-exclusive, royalty-free, irrevocable, perpetual, sub-licensable, non-transferable (except pursuant to Article 14 (Assignment)) right and license to practice FCE Background Information and FCE Background Patents for Generation 2 Technology in Carbon Capture Applications and Hydrogen Applications."
+      ]
+    },
+    {
+      "category": "Joint Ip Ownership",
+      "contracts_observed_in": 46,
+      "total_contracts": 510,
+      "example_clauses": [
+        "The parties hereby agree that the                   copyright in the Product sound recording compilation will be                   jointly registered by Integrity in the names of Integrity                   and TL.",
+        "TL will trademark the series name in joint                   names of TL and Integrity.",
+        "if such rights comprise (i) analysis prepared for or on behalf of the Parties as participants in the Company-Skype Branded Application, or (ii) any intellectual property right co-developed by the Parties, or (iii) of any Support Information, or (iv) any data as specifically provided to Skype or the Online Group by Company-Skype Branded Customers (\"Joint Data\"), other than that set forth in Sections 4.2.3.2.1 and 4.2.3.2.2 above and other than any Group Rights or Skype Rights, then such rights...",
+        "All right, title and interest in and to the Improved Conformis Background IP and KIB Product IP (\"Joint IP\") shall be   owned jointly by the Parties.",
+        "Each Party to whom ownership is to vest in Joint IP by operation of law or by assignment by its employees or Agents agrees   to assign and hereby assigns to the other Party an undivided one-half right, title and interest in and to all Joint IP; and to facilitate   such assignment, the Party possessing such ownership agrees (i) to regularly ensure that its employees and consultants timely make   any appropriate assignments to it; and (ii) at the other Party's reasonable request, to execute and..."
+      ]
+    },
+    {
+      "category": "Non-Disparagement",
+      "contracts_observed_in": 38,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Company shall not specify the business practices of MA, nor regulate the manner in which MA shall operate its business, provided that MA (a) conducts business in a manner that reflects favorably at all times on the Technology sold and the good name, goodwill and reputation of Company and its affiliates<omitted>",
+        "Distributor shall not do anything which is contrary to or which in Erchonia's reasonable business judgment is harmful to its honor, goodwill or reputation.",
+        "Franchisee shall not do anything or suffer anything to be done which may adversely affect any rights of Franchisor in and to any Franchisor Property, or any registrations thereof or which, directly or indirectly, may<omitted>disparage or detract from Franchisor's reputation.",
+        "No Party will make, issue or release any statement which results in any defamation or disparagement of the Village, the City of Canton, the other Party, or any team, person, performer or organization involved in events at the Village.",
+        "Each of the HOF Entities or Constellation may terminate this Agreement at any time without liability if association with another Party could, in such Party's reasonable opinion, materially damage its reputation or image or in the event a Party breaches Section 3.3 hereof, which breach is not cured within sixty (60)."
+      ]
+    },
+    {
+      "category": "No-Solicit Of Customers",
+      "contracts_observed_in": 34,
+      "total_contracts": 510,
+      "example_clauses": [
+        "The Company shall not contact any of Distributor's Customer's for any reason, without the prior written approval of Distributor.",
+        "In the event that the Agreement is terminated pursuant to Section           16.a.v. due to e-centives' acquisition by an Excite@Home Named           Competitor, or by an entity controlling or controlled by an           Excite@Home Named Competitor, e-centives or its assigns or designates           may not contact any Users for whom User Data has been provided           pursuant to this Agreement, excluding those that have opted out in           accordance with Section 5(a) of Exhibit D.",
+        "Application Provider may not use Payment-Eligible User Data to                solicit User traffic to www.e-centives.com or any other                co-branded version of www.e-centives.com with the intent of                driving such Users away from using the Co-Branded Application.",
+        "Application Provider will not solicit any Excite@Home Member on             behalf of any Excite@Home Named Competitor during the Term of this             Agreement or thereafter.",
+        "During the Term of this Agreement, and for a period of one year thereafter, except as expressly provided in this Agreement, PlanetCAD shall not market any services to Customers without the prior written approval of Dassault Systemes."
+      ]
+    },
+    {
+      "category": "Third Party Beneficiary",
+      "contracts_observed_in": 32,
+      "total_contracts": 510,
+      "example_clauses": [
+        "All AT&T Affiliates receiving Material or Services under this Agreement and the federal government of the United States shall be express third party beneficiaries under this Agreement.",
+        "Ehave shall be a third party beneficiary hereunder, but shall not have any obligations to the End User thereunder.",
+        "iPass and its suppliers shall be deemed to be third-party beneficiaries of this agreement, with the right to enforce the terms of this agreement.",
+        "The Owner Trustee and the Indenture Trustee, for the benefit of the Secured Parties, will be third-party beneficiaries of this Agreement and may enforce this Agreement against the Depositor and the Servicer.",
+        "The parties agree that the Investment Advisor shall be a third party beneficiary of this Agreement, and shall have the rights and protections provided to the Licensee under this Agreement."
+      ]
+    },
+    {
+      "category": "Most Favored Nation",
+      "contracts_observed_in": 28,
+      "total_contracts": 510,
+      "example_clauses": [
+        "In the event that Licensor grants to another VOD or Pay-Per-View (\"PPV\") service provider in the U.S. or the Territory the right to distribute or exhibit any Licensed Program on an earlier availability date, then Licensor shall also grant to Rogers the right to distribute and exhibit such Licensed Program on such earlier availability date, on the terms provided herein.",
+        "If Licensor enters, or has entered, into an agreement or series of agreements (including side letters, understandings or arrangements, whether oral or written, whether formal or informal, whether now or hereafter effective, or whether on a long-term basis or short-term basis) with a third party for the distribution and exhibition of Licensed Programs in the U.S. or the Territory on a VOD basis, or any other basis that permits the downloading of such Licensed Programs and the subsequent viewing...",
+        "Licensor shall provide to Rogers, no later than February 28 in each year, a sworn statement of a senior officer of Licensor, or a certificate of the auditors of Licensor, confirming that, during the immediately preceding calendar year, Licensor did not enter into such an agreement or series of agreements or, if it did enter into such agreement(s), confirming the effective date thereof and identifying the terms contained therein that are more favourable than those contained in this Agreement.",
+        "If for any reason, Integrity and TL are subject to lower \"free                   goods\" limits by any third party license, the foregoing shall                   be adjusted to comply with any such license(s).",
+        "The Company will, and Online BVI will cause the Company to, use its commercially reasonable efforts to make available and promote the Online Group's existing payment processing and customer billing and payment gateway methods for the purchase of Skype premium features by Company-Skype Branded Customers, including, without limitation, prepaid card distribution networks, vouchers and mobile payment methods, provided, that all payment processing and customer billing and payment gateway charges for..."
+      ]
+    },
+    {
+      "category": "Affiliate License-Licensor",
+      "contracts_observed_in": 23,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Skype further agrees that in the event that, prior to such time as the Company-Skype Branded Application is updated or upgraded to include the Mobile Technology, Skype or any of its Affiliates makes available to Skype users a new software product which allows access to services available through the Skype Software but on or through mobile communication devices (but in any event excluding Skype Zones), it will license that software product to the Company and Online BVI on the terms and...",
+        "Hence, as of the Distribution Date, Honeywell hereby grants, and agrees to cause the members of the Honeywell Group to hereby grant, to SpinCo and the members of the SpinCo Group a non-exclusive, royalty-free, fully-paid, perpetual, sublicenseable (solely to Subsidiaries and suppliers for \"have-made\" purposes), worldwide license to use and exercise rights under the Honeywell Shared IP (excluding Trademarks, the Honeywell Content and the subject matter of any other Ancillary Agreement), said...",
+        "Notwithstanding Section 3.01, Honeywell hereby grants, and agrees to cause the members of the Honeywell Group to hereby grant, to SpinCo and the members of the SpinCo Group, for a period of ten (10) years after the Distribution Date (unless earlier terminated in accordance with Section 3.03(c)), a non-exclusive, royalty-free, fully-paid, non-sublicenseable, non-transferable, worldwide license to use and reproduce the Honeywell Content solely for the SpinCo Group's internal business purposes.",
+        "Customer hereby grants to Manufacturer a non-exclusive license during the Term to use any Customer Property and Customer-Owned Improvements and Developments solely in connection with Manufacturer performing its obligations under this Agreement or the Facility Addendum in accordance with the terms hereof or thereof, as applicable",
+        "\"Customer Property\" means all Intellectual Property, together with all materials, data, writings and other property in any form whatsoever, which is (a) owned or controlled by Customer or its Affiliates as of and following the Effective Date and (b) provided to Manufacturer by or on behalf of Customer or its Personnel under this Agreement."
+      ]
+    },
+    {
+      "category": "Unlimited/All-You-Can-Eat-License",
+      "contracts_observed_in": 17,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Multiple viewings of the Licensed Program shall be permitted during the Viewing Period for no additional fee and all such viewings shall be considered a single exhibition of the Licensed Program for the purposes of calculating License Fees hereunder.",
+        "License Term Perpetual, unlimited runs x Other: 2 years Commencing: November 15, 2012",
+        "Producer further grants to ConvergTV the right and license to Distribute the Program on any ConvergTV channel, and/or other distribution outlets, that exists today or that is created or developed in the future and this right includes the right to Distribute on any channels of a ConvergTV affiliate and/or other distribution outlets without limitation.",
+        "For the License Term and within the Licensed Territory, Producer hereby grants to ConvergTV a right and license to Distribute the program, file or video listed on the Deal Terms above (the \"Program\") consisting of<omitted>episodes (series) or<omitted>one-offs, for unlimited runs for the License Term through ConvergTV channels and/or other distribution outlets, in accordance with the License Rights.",
+        "During the Term, Naked shall have the right in the Territory to the unlimited broadcast use and re-use of the Commercial Materials in the Territory"
+      ]
+    },
+    {
+      "category": "Price Restrictions",
+      "contracts_observed_in": 15,
+      "total_contracts": 510,
+      "example_clauses": [
+        "Following the Initial Term, Women.com shall have the right, upon no fewer than sixty (60) days prior written notice to eDiets, to increase the amount of the Payment Schedule; provided, that (i) Women.com may not increase the Payment Schedule more than once in any period of twelve (12) consecutive months; and (ii) such increase may not exceed twenty percent (20%) of the then current Payment Schedule.",
+        "Such Prices and Volume Discount Prices shall only be subject to increase once per year on each anniversary date of this Agreement, provided (i) Company provides Distributor with at least Ninety (90) days prior written notice of any such increase, and (ii) such increase does not exceed 5% of the preceding year's Prices, except for reasons of force majeure, (Chapter 10), and Volume Discount Prices nor the lowest price charged to others for the same Product.",
+        "Subject to Company's right to increase the price only once per year per the terms and restrictions contained in the Agreement, and Company's right to decrease the price at any time upon notice, the Products shall be sold by Company to Distributor at the following Prices and Volume Discount Prices.",
+        "VOTOCAST will give Licensee at least thirty (30) days prior written notice of any rate changes during any Renewal Term.",
+        "VOTOCAST expressly reserves the right to change its rates charged hereunder for the Services during any Renewal Term (as detined herein) but agrees that rates may not increase by more than ten percent (10%) during any Renewal Term."
+      ]
+    },
+    {
+      "category": "Source Code Escrow",
+      "contracts_observed_in": 13,
+      "total_contracts": 510,
+      "example_clauses": [
+        "In connection with the exercise of CHT's rights under the Escrow Agreement, Ehave hereby grants to CHT a non- exclusive, non-transferable (except as set forth in Section 20(f)), right and license to use and copy the materials deposited with the Escrow Agent, including the Source Code, its Specifications and documentation, and any resulting corrections, repairs, translations, enhancements, and other derivative works and improvements made by CHT, for the sole purposes of providing to CHT the...",
+        "The parties acknowledge and agree that a \"Release Condition\" for purposes of the Escrow Agreement shall be deemed to mean any one or more of the following listed events (in addition to any other event specified as a release condition under the Escrow Agreement): (i) Ehave makes a general assignment for the benefit of creditors; (ii) Ehave voluntarily institutes any bankruptcy, insolvency, reorganization, moratorium, arrangement, readjustment or debt, dissolution, liquidation or similar...",
+        "CHT expressly agrees, however, that CHT shall not exercise any of the foregoing right and license unless and until CHT obtains such Source Code from the Escrow Agent.",
+        "Upon release of the Source Code by the Escrow Agent to CHT pursuant to the terms and conditions of the Escrow Agreement, Ehave hereby warrants that such Source Code and other materials are and will be the then current version of the Software as used by CHT in its provision to End Users of the eEhave Companion Solution under the Subscription Agreements and that Ehave shall throughout the Term keep the Source Code so deposited with the Escrow Agent current by periodically submitting material...",
+        "Concurrently with execution of this Agreement or, at CHT's option, as soon as practicable after the Effective Date but in no event later than CHT's acceptance of and the launch of the Ehave Companion Solution, CHT and Ehave shall enter into a Source Code Escrow Agreement with a reputable software escrow agent mutually acceptable to the Parties (\"Escrow Agent\"), in or substantially in the form attached hereto as Schedule \"7\", or otherwise in a form acceptable to the Parties, acting reasonably,..."
+      ]
+    },
+    {
+      "category": "Notice Period To Terminate Renewal- Answer",
+      "contracts_observed_in": 0,
+      "total_contracts": 510,
+      "example_clauses": []
+    }
+  ]
+}

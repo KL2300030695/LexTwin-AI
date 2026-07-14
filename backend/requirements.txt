@@ -7,7 +7,8 @@ python-docx==1.1.2
 networkx==3.3
 diff-match-patch==20230430
 firebase-admin==6.5.0
-anthropic==0.34.2
+anthropic==0.116.0
 pytest==8.3.3
 reportlab==4.2.2
 python-dotenv==1.0.1
+pyarrow==25.0.0  # only needed to run scripts/build_ledgar_playbook.py and build_unfair_tos_playbook.py (reads dataset parquet files); not imported by the running app
