@@ -11,7 +11,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](#)
 [![React](https://img.shields.io/badge/react-19-61DAFB?logo=react&logoColor=black)](#)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](#)
-[![AI](https://img.shields.io/badge/AI-100%25%20Local%20(Qwen2.5%2C%20no%20API%20key)-5A67D8?logo=meta&logoColor=white)](#)
+[![AI](https://img.shields.io/badge/AI-Local%20Qwen2.5%20default%20%7C%20optional%20Gemini-5A67D8?logo=meta&logoColor=white)](#)
 [![Firebase](https://img.shields.io/badge/Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)](#)
 [![Stars](https://img.shields.io/github/stars/KL2300030695/LexTwin-AI?style=social)](https://github.com/KL2300030695/LexTwin-AI/stargazers)
 
@@ -95,7 +95,7 @@ Neither approach models the actual *graph* of dependencies a real contract set e
 LexTwin AI treats an MSA/SOW pair as a **structured, explainable graph problem first, and an LLM judgment problem second — only where a judgment is genuinely required.**
 
 - **Parsing, hierarchy, cross-references, dependency graphs, cycle detection, obligation extraction, and the missing-reference guardrail are 100% deterministic** (regex + `networkx`), not LLM calls. Every edge in the dependency graph traces back to an exact character span in the source text. Every result is reproducible and unit-tested.
-- **A local LLM (Qwen2.5-7B-Instruct, via `llama-cpp-python`) is invoked for exactly two narrow, genuinely judgment-shaped tasks**: (1) deciding whether a topic-aligned MSA clause and SOW clause materially contradict each other, and (2) drafting fallback redline language for a clause a reviewer has flagged. Both calls use grammar-constrained structured output (a fixed Pydantic schema), so the model can't return anything the app doesn't already know how to render. **No API key, no external network call at inference time, and no per-call cost** — the model runs entirely on the machine hosting the backend.
+- **The configured AI provider is invoked for exactly two narrow, genuinely judgment-shaped tasks**: (1) deciding whether a topic-aligned MSA clause and SOW clause materially contradict each other, and (2) drafting fallback redline language for a clause a reviewer has flagged. By default that provider is a **local LLM (Qwen2.5-7B-Instruct, via `llama-cpp-python`)** — no API key, no external network call at inference time, no per-call cost, running entirely on the machine hosting the backend. An optional Gemini provider (`AI_PROVIDER=gemini`) is also supported for faster responses if you bring your own key. Both use grammar/schema-constrained structured output (a fixed Pydantic schema), so neither can return anything the app doesn't already know how to render, and both are asked the identical prompt — switching provider never changes what's being asked, only who answers it.
 - **A clause is never handed to the LLM for contradiction analysis if a document it depends on is missing from the upload set.** Instead of guessing, the system explicitly reports "cannot evaluate — missing reference," which is the closest deterministic analogue to a hallucination guard: it prevents the model from being asked to reason over content it was never given, by construction, before the API call is ever made.
 - The result is a **Contract Digital Twin**: an interactive, explorable graph of every clause and its dependencies, layered with deterministic risk flags (circular references, override conflicts, missing exhibits) and targeted AI risk flags (cross-document contradictions), all traceable back to source text and page numbers.
 
@@ -247,19 +247,19 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** The headline AI feature: automatically find places where an SOW clause materially conflicts with the MSA clause that's supposed to govern it — different payment terms, different liability caps, different SLA thresholds for the same metric.
 
-**How it works.** Clauses from the MSA and SOW are first aligned by topic (see [feature 8](#8-configurable-legal-playbook--topic-alignment)) using deterministic regex classification against clause headings — **not** an LLM call. For each topic where both documents have a matching clause, and neither clause is blocked by the [missing-reference guardrail](#6-missing-reference-refusal-guardrail), the pair is sent to the local model (`app/services/ai_client.py` re-exports `local_llm_client.py`, which runs **Qwen2.5-7B-Instruct** entirely on-machine via `llama-cpp-python`) with a tightly scoped system prompt instructing it to judge *material* conflicts only (minor wording differences or a SOW adding detail without conflicting are explicitly **not** contradictions) and to return a structured `ContradictionJudgment` (`has_contradiction: bool`, `explanation: str`, `confidence: float`) via `create_chat_completion(..., response_format={"type": "json_object", "schema": ContradictionJudgment.model_json_schema()})` — grammar-constrained (GBNF) decoding that forces the raw output to be valid JSON matching the schema's required fields and types before it's even returned. Pydantic then validates it a second time on the way in, with a defensive `field_validator` that normalizes `confidence` in case the model emits a 0–100 percentage instead of the requested 0.0–1.0 fraction — grammar constraints enforce JSON *shape*, not numeric-range semantics, so this check matters in practice (verified directly during development).
+**How it works.** Clauses from the MSA and SOW are first aligned by topic (see [feature 8](#8-configurable-legal-playbook--topic-alignment)) using deterministic regex classification against clause headings — **not** an LLM call. For each topic where both documents have a matching clause, and neither clause is blocked by the [missing-reference guardrail](#6-missing-reference-refusal-guardrail), the pair is sent to the configured AI provider (`app/services/ai_client.py` dispatches to `local_llm_client.py` by default, or `gemini_client.py` if `AI_PROVIDER=gemini`) with a tightly scoped system prompt instructing it to judge *material* conflicts only (minor wording differences or a SOW adding detail without conflicting are explicitly **not** contradictions) and to return a structured `ContradictionJudgment` (`explanation: str`, `has_contradiction: bool`, `confidence: float`). Under the local provider this is grammar-constrained (GBNF) decoding via `create_chat_completion(..., response_format={"type": "json_object", "schema": ...})`, forcing the raw output to be valid JSON matching the schema before it's even returned; Gemini uses its own `response_schema` structured-output mechanism to the same effect. Pydantic then validates the result a second time on the way in either way, with a defensive `field_validator` that normalizes `confidence` in case the model emits a 0–100 percentage instead of the requested 0.0–1.0 fraction — grammar constraints enforce JSON *shape*, not numeric-range semantics, so this check matters in practice (verified directly during development, under the local provider).
 
 **Input.** `msa_doc_id`, `sow_doc_id`.
 
-**Processing.** Topic alignment → missing-reference gating → per-pair local model call with grammar-constrained structured output → status classification (`analyzed` / `cannot_evaluate` / `error`).
+**Processing.** Topic alignment → missing-reference gating → per-pair AI provider call with structured output → status classification (`analyzed` / `cannot_evaluate` / `error`).
 
 **Output.** A `ContradictionAnalysis`: `results[]` (one `ContradictionResult` per aligned topic, with `status`, `has_contradiction`, `explanation`, `confidence`), `contradictions_found` count.
 
-**Technologies used.** `llama-cpp-python` running **Qwen2.5-7B-Instruct** (GGUF, Q3_K_M quantization) — see [Environment Variables](#-environment-variables) for the local-model config and why the 7B model, not the smaller/faster 3B, is the default.
+**Technologies used.** `llama-cpp-python` running **Qwen2.5-7B-Instruct** (GGUF, Q3_K_M quantization) by default — see [Environment Variables](#-environment-variables) for the local-model config, why the 7B model (not the smaller/faster 3B) is the default, and how to switch to Gemini instead.
 
-**Benefits.** Scoped, auditable AI usage: one local-inference call per aligned topic (not per-token document chat), each with a fixed, inspectable prompt and a schema-constrained response — every judgment is loggable to the [audit trail](#13-human-in-the-loop-audit-trail) with its exact rationale. Because inference is local, there's no per-call cost, no API key to leak, and no rate limit — the only cost is CPU time on the host machine.
+**Benefits.** Scoped, auditable AI usage: one AI call per aligned topic (not per-token document chat), each with a fixed, inspectable prompt and a schema-constrained response — every judgment is loggable to the [audit trail](#13-human-in-the-loop-audit-trail) with its exact rationale. With the default local provider, there's no per-call cost, no API key to leak, and no rate limit — the only cost is CPU time on the host machine.
 
-**Possible improvements.** Currently only compares an MSA against a *single* SOW at a time; doesn't yet aggregate contradictions across many SOWs under the same MSA in one pass; a failed local-model call for one topic degrades gracefully to `status: "error"` for that topic only. CPU-only inference on a 7B model is measurably slower than a hosted API call — see [Performance](#-performance).
+**Possible improvements.** Currently only compares an MSA against a *single* SOW at a time; doesn't yet aggregate contradictions across many SOWs under the same MSA in one pass; a failed AI call for one topic degrades gracefully to `status: "error"` for that topic only. CPU-only local inference on a 7B model is measurably slower than a hosted API call — see [Performance](#-performance) — which is exactly the tradeoff the optional Gemini provider exists to let you make differently.
 
 ---
 
@@ -334,15 +334,15 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** For any flagged clause, draft a minimal, ready-to-review replacement that resolves the stated risk — not a full rewrite, the smallest edit that fixes the problem.
 
-**How it works.** Given a `doc_id`/`clause_id` and the risk reason it was flagged for (optionally with a reference clause to align with, e.g. the MSA clause a contradicting SOW clause should match), the local model is prompted to preserve the original wording and structure as much as possible and produce a `FallbackSuggestion` (`suggested_text`, `rationale`) via the same grammar-constrained structured-output pattern as contradiction detection. The original and suggested text are then fed through a **word-level diff** (`diff-match-patch`, using a character-encoding trick that maps whole words to Private-Use-Area Unicode characters before diffing, then maps back) to produce both a structured `DiffOp[]` and a ready-to-render `diff_markdown` string.
+**How it works.** Given a `doc_id`/`clause_id` and the risk reason it was flagged for (optionally with a reference clause to align with, e.g. the MSA clause a contradicting SOW clause should match), the configured AI provider is prompted to preserve the original wording and structure as much as possible and produce a `FallbackSuggestion` (`suggested_text`, `rationale`) via the same structured-output pattern as contradiction detection. The original and suggested text are then fed through a **word-level diff** (`diff-match-patch`, using a character-encoding trick that maps whole words to Private-Use-Area Unicode characters before diffing, then maps back) to produce both a structured `DiffOp[]` and a ready-to-render `diff_markdown` string.
 
 **Input.** `doc_id`, `clause_id`, `risk_reason`, optional `reference_doc_id`/`reference_clause_id`.
 
-**Processing.** Local model structured-output call → word-level diff computation → markdown rendering.
+**Processing.** AI provider structured-output call → word-level diff computation → markdown rendering.
 
 **Output.** A `RedlineSuggestion`: `original_text`, `suggested_text`, `rationale`, `diff[]`, `diff_markdown`.
 
-**Technologies used.** `llama-cpp-python` (Qwen2.5-7B-Instruct, same local model as contradiction detection), `diff-match-patch`.
+**Technologies used.** `llama-cpp-python` (Qwen2.5-7B-Instruct, same default local model as contradiction detection) or Gemini if `AI_PROVIDER=gemini`, `diff-match-patch`.
 
 **Benefits.** Word-level (not line-level) diffing means a reviewer sees precisely which phrase changed, not a wall of red/green paragraph replacement — dramatically faster to review.
 
@@ -416,17 +416,17 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** Free-form Q&A over an MSA/SOW pair — ask anything, get a grounded answer with clickable citations back to the exact source clause(s), instead of manually reading through both documents to find the answer yourself.
 
-**How it works.** This is the one feature in the app where the relevant clauses genuinely can't be known in advance (any question is fair game), so it's the one place LexTwin AI uses **real embedding-based retrieval**: every analyzable clause in the document pair is embedded with **BAAI/bge-large-en-v1.5** (via `sentence-transformers`) and indexed in an in-process **FAISS** vector index (cosine similarity via L2-normalized inner product), cached per document pair. A question is embedded with BGE's documented query-instruction prefix, the top-8 most similar clauses are retrieved, and a numbered context block is built from them. That context — plus the running conversation history — is sent to the local model (the same Qwen2.5-7B-Instruct model every other AI feature in the app uses, via `app/services/ai_client.py`) with instructions to answer *using only the provided clauses* and to report which ones it relied on via a structured `cited_refs` field, not inline bracket markers in the prose. The backend maps those reference numbers back to real `clause_id`s before returning them, and a defensive regex strips any stray `[N]` markers a model includes anyway.
+**How it works.** This is the one feature in the app where the relevant clauses genuinely can't be known in advance (any question is fair game), so it's the one place LexTwin AI uses **real embedding-based retrieval**: every analyzable clause in the document pair is embedded with **BAAI/bge-large-en-v1.5** (via `sentence-transformers`) and indexed in an in-process **FAISS** vector index (cosine similarity via L2-normalized inner product), cached per document pair. A question is embedded with BGE's documented query-instruction prefix, the top-8 most similar clauses are retrieved, and a numbered context block is built from them. That context — plus the running conversation history — is sent to the configured AI provider (the local Qwen2.5-7B-Instruct model by default, or Gemini if `AI_PROVIDER=gemini`, via `app/services/ai_client.py`, the same dispatcher every other AI feature in the app uses) with instructions to answer *using only the provided clauses* and to report which ones it relied on via a structured `cited_refs` field, not inline bracket markers in the prose. The backend maps those reference numbers back to real `clause_id`s before returning them, and a defensive regex strips any stray `[N]` markers a model includes anyway.
 
 **Input.** `doc_ids[]`, `question`, and `history[]` (prior turns, resent by the frontend each request — the backend itself is stateless per call).
 
-**Processing.** Embed clauses (once, cached) → embed question → FAISS top-k search → numbered context assembly → local model structured-output call → citation mapping → inline-marker cleanup.
+**Processing.** Embed clauses (once, cached) → embed question → FAISS top-k search → numbered context assembly → AI provider structured-output call → citation mapping → inline-marker cleanup.
 
 **Output.** A `ChatResponse`: `answer` (clean prose, no citation markers) and `citations[]` (each a real `clause_id` the frontend can look up and display via the same `ClauseCard` used everywhere else in the app).
 
-**Technologies used.** `sentence-transformers` + `BAAI/bge-large-en-v1.5` for retrieval, `faiss-cpu` (`IndexFlatIP`) for the vector index, then Qwen2.5-7B-Instruct (`llama-cpp-python`) for answer synthesis — all four run **entirely locally**; this is a genuinely separate local model from the embedding one, loaded and cached independently (see `app/services/local_llm_client.py` vs. `app/rag/embedder.py`).
+**Technologies used.** `sentence-transformers` + `BAAI/bge-large-en-v1.5` for retrieval, `faiss-cpu` (`IndexFlatIP`) for the vector index — both always local, regardless of `AI_PROVIDER`, since embedding is retrieval infrastructure, not a judgment call — then Qwen2.5-7B-Instruct (`llama-cpp-python`, default) or Gemini for answer synthesis. Under the local provider this is a genuinely separate model from the embedding one, loaded and cached independently (see `app/services/local_llm_client.py` vs. `app/rag/embedder.py`).
 
-**Benefits.** Every answer is auditable back to a specific clause, not a black-box summary; every step in the pipeline — retrieval and synthesis alike — runs on-machine with no API key and no per-call cost; reuses the exact same structured-output pattern and `ClauseCard` citation UI already established elsewhere in the app rather than inventing a parallel system.
+**Benefits.** Every answer is auditable back to a specific clause, not a black-box summary; retrieval always runs locally regardless of provider, so browsing/asking cheap questions never touches an external API even when Gemini is selected for synthesis; reuses the exact same structured-output pattern and `ClauseCard` citation UI already established elsewhere in the app rather than inventing a parallel system.
 
 **Possible improvements.** Dense single-vector retrieval measurably struggles with *compound* questions (verified directly — see [Retrieval & Context Handling](#-retrieval--context-handling)); query decomposition or hybrid keyword+semantic search would address this. No persistent index across process restarts (in-memory cache only). No multi-turn topic tracking beyond resending raw history text.
 
@@ -478,8 +478,8 @@ flowchart TB
         DIFF["Word-level Diff\n(diff-match-patch)"]
     end
 
-    subgraph LLM["Local LLM (Qwen2.5-7B, llama-cpp-python) — no API key, judgment only"]
-        DISP["ai_client.py\n(re-exports local_llm_client)"]
+    subgraph LLM["AI Provider (local Qwen2.5-7B by default, or Gemini) — judgment only"]
+        DISP["ai_client.py\n(dispatches by AI_PROVIDER)"]
         CTR["Contradiction\nJudgment"]
         FALL["Fallback Redline\nDrafting"]
         DISP --> CTR
@@ -515,7 +515,7 @@ flowchart TB
     PBJSON --> R7
 ```
 
-**Key architectural principle:** everything in the *Deterministic Parsing* and *Deterministic Analysis* layers is regex/graph-algorithm code with zero LLM involvement, fully unit-tested and reproducible. The *Local LLM* box is deliberately small and isolated — `app/services/ai_client.py` is the only module the rest of the app imports from, and it's a thin re-export of `local_llm_client.py`, which runs **Qwen2.5-7B-Instruct** entirely on-machine via `llama-cpp-python` for the two structured-output calls (`app/services/ai_schemas.py`), both gated by the deterministic completeness check upstream. No API key exists anywhere in this system.
+**Key architectural principle:** everything in the *Deterministic Parsing* and *Deterministic Analysis* layers is regex/graph-algorithm code with zero LLM involvement, fully unit-tested and reproducible. The *AI Provider* box is deliberately small and isolated — `app/services/ai_client.py` is the only module the rest of the app imports from, and it dispatches to `local_llm_client.py` (default, no API key, runs **Qwen2.5-7B-Instruct** entirely on-machine via `llama-cpp-python`) or `gemini_client.py` (optional, requires your own key) based on `AI_PROVIDER`, both implementing the exact same two structured-output calls against the exact same prompts/schemas (`app/services/ai_schemas.py`), both gated by the deterministic completeness check upstream.
 
 ---
 
@@ -585,10 +585,11 @@ LexTwin AI/
 │   │   │   ├── audit_service.py
 │   │   │   ├── report_service.py     #   Renders the PDF report (reportlab; pure formatting, no analysis)
 │   │   │   ├── chat_service.py       #   Chat with Contract orchestration (retrieval + answer synthesis)
-│   │   │   ├── ai_client.py          #   Thin re-export of local_llm_client.py (single import point for the rest of the app)
-│   │   │   ├── ai_schemas.py         #   Shared prompts + Pydantic schemas
+│   │   │   ├── ai_client.py          #   Provider dispatcher (routes to local_llm_client or gemini_client by AI_PROVIDER)
+│   │   │   ├── ai_schemas.py         #   Shared prompts + Pydantic schemas (provider-agnostic)
 │   │   │   ├── ai_errors.py          #   Shared AIClientError base exception
-│   │   │   └── local_llm_client.py   #   Runs Qwen2.5-7B-Instruct locally via llama-cpp-python -- no API key
+│   │   │   ├── local_llm_client.py   #   Runs Qwen2.5-7B-Instruct locally via llama-cpp-python -- no API key (default provider)
+│   │   │   └── gemini_client.py      #   Calls the Google Gen AI API (AI_PROVIDER=gemini, optional)
 │   │   │
 │   │   └── routers/                  # FastAPI route definitions (thin — delegate to services)
 │   │       ├── documents.py
@@ -662,7 +663,7 @@ LexTwin AI/
 | Python | 3.10+ | 3.10.11 used in development |
 | Node.js | 18+ | 23.4.0 used in development |
 | npm | 9+ | ships with Node |
-| **No AI provider API key needed, ever.** | — | Contradiction detection, redlining, and Chat with Contract's answer synthesis all run on a **local LLM** (Qwen2.5-7B-Instruct via `llama-cpp-python`) — no Claude/Gemini/OpenAI key, no account, no external network call at inference time. |
+| **No AI provider API key needed by default.** | — | Contradiction detection, redlining, and Chat with Contract's answer synthesis run on a **local LLM** (Qwen2.5-7B-Instruct via `llama-cpp-python`) by default — no key, no account, no external network call at inference time. An optional Gemini provider is also supported (`AI_PROVIDER=gemini`) for faster responses if you bring your own API key — see [Installation step 5](#5-choose-an-ai-provider-local-default-or-gemini). |
 | A Firebase project | optional | app runs fully functional against a local-disk store with `USE_FIREBASE=false` |
 | A C++ build toolchain (CMake + MSVC/gcc/clang) | only if no prebuilt `llama-cpp-python` wheel matches your platform/Python version | `pip install` falls back to compiling from source in that case — took ~12 minutes on this project's dev machine. Prebuilt wheels exist for common platform/Python combinations, so most installs won't need this. |
 | **~8GB+ free RAM recommended** | — | The local LLM (Qwen2.5-7B, ~3.8GB GGUF file) plus the separate embedding model used by Chat with Contract (~1.3GB) are both loaded into the backend process's memory. On a memory-constrained machine (e.g. 16GB total RAM with an IDE and browser also open), running both models at once can be tight — see [Troubleshooting](#troubleshooting) if the backend process exits unexpectedly under load. |
@@ -713,13 +714,17 @@ To use real Firestore instead:
 3. Project Settings → **Service Accounts** → *Generate new private key* → save the downloaded JSON as `backend/firebase-credentials.json` (already covered by `.gitignore` — never commit this file).
 4. In `backend/.env`, set `USE_FIREBASE=true`.
 
-### 5. Local LLM — nothing to configure, but read this once
+### 5. Choose an AI provider: local (default) or Gemini
 
-Cross-document contradiction detection, redline generation, and Chat with Contract's answer synthesis are all powered by a **local model** — **Qwen2.5-7B-Instruct**, run entirely on-machine via `llama-cpp-python`. There is no API key to obtain and no account to create; `backend/.env.example` ships working defaults (`LOCAL_LLM_REPO_ID`, `LOCAL_LLM_FILENAME`, `LOCAL_LLM_CONTEXT_SIZE`) that just work out of the box.
+Cross-document contradiction detection, redline generation, and Chat with Contract's answer synthesis are powered by whichever provider `AI_PROVIDER` selects in `backend/.env` — `app/services/ai_client.py` dispatches between them, and both are asked the exact same prompt against the exact same schema (`app/services/ai_schemas.py`), so switching provider never changes what's being asked.
 
-The first time any of those three features is actually used, `Llama.from_pretrained(...)` downloads the model's GGUF file (~3.8GB) from Hugging Face Hub and caches it locally — this happens once, not per-request, and every feature after that (and the pytest `slow` suite) reuses the cached file. Every other feature (upload, parsing, dependency graph, completeness check, obligation extraction) needs none of this and works immediately.
+**Option A — Local (default, `AI_PROVIDER=local`):** a **local model** — **Qwen2.5-7B-Instruct**, run entirely on-machine via `llama-cpp-python`. No API key, no account, `backend/.env.example` ships working defaults (`LOCAL_LLM_REPO_ID`, `LOCAL_LLM_FILENAME`, `LOCAL_LLM_CONTEXT_SIZE`) that just work out of the box, but CPU-only inference is slow (roughly 1-2 minutes per AI call on a modest laptop CPU — see [Performance](#-performance)).
 
-**Why 7B, not a smaller/faster 3B model?** Verified directly during development: a Qwen2.5-3B-Instruct model missed a real, unambiguous MSA/SOW payment-term contradiction (45 days vs. 15 days), while the 7B model — even at a more aggressive Q3_K_M quantization — caught it correctly. A fast-but-wrong contradiction detector defeats the purpose of this tool, so the default trades a slower first response for a materially more reliable judgment. If you need faster inference and can tolerate lower judgment quality (e.g. on a lower-RAM machine), swap `LOCAL_LLM_REPO_ID`/`LOCAL_LLM_FILENAME` in `.env` to `Qwen/Qwen2.5-3B-Instruct-GGUF` / `qwen2.5-3b-instruct-q4_k_m.gguf` — see `app/services/local_llm_client.py`.
+The first time any of those three features is actually used under the local provider, `Llama.from_pretrained(...)` downloads the model's GGUF file (~3.8GB) from Hugging Face Hub and caches it locally — this happens once, not per-request, and every feature after that (and the pytest `slow` suite) reuses the cached file. Every other feature (upload, parsing, dependency graph, completeness check, obligation extraction) needs none of this and works immediately regardless of which provider is selected.
+
+**Why 7B, not a smaller/faster 3B model, as the local default?** Verified directly during development: a Qwen2.5-3B-Instruct model missed a real, unambiguous MSA/SOW payment-term contradiction (45 days vs. 15 days), while the 7B model — even at a more aggressive Q3_K_M quantization — caught it correctly. A fast-but-wrong contradiction detector defeats the purpose of this tool, so the default trades a slower first response for a materially more reliable judgment. If you need faster local inference and can tolerate lower judgment quality, swap `LOCAL_LLM_REPO_ID`/`LOCAL_LLM_FILENAME` in `.env` to `Qwen/Qwen2.5-3B-Instruct-GGUF` / `qwen2.5-3b-instruct-q4_k_m.gguf` — see `app/services/local_llm_client.py`.
+
+**Option B — Gemini (optional, `AI_PROVIDER=gemini`):** get an API key from [aistudio.google.com](https://aistudio.google.com/apikey), set `GEMINI_API_KEY` in `backend/.env`, and set `AI_PROVIDER=gemini`. Much faster than local CPU inference, at the cost of needing a key and sending clause text to Google's API. This is an explicit, visible opt-in — there is no hidden fallback to Gemini, and the local provider remains the default unless you change this setting yourself. **Never commit `backend/.env` with a real key in it** (already gitignored), and never paste a real key into a chat, issue, commit message, or PR — treat any key that's been pasted somewhere it shouldn't have been as compromised and rotate it immediately.
 
 ### 6. (Optional) Download reference datasets
 
@@ -803,11 +808,17 @@ USE_FIREBASE=false
 # USE_FIREBASE=true. Never commit this file — it is already gitignored.
 FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
 
-# ── Local LLM ─────────────────────────────────────────────────────────────
-# Powers contradiction detection, redline generation, and Chat with
-# Contract's answer synthesis. No API key, ever -- runs entirely on-machine
-# via llama-cpp-python. The GGUF file below is downloaded once from Hugging
-# Face Hub on first use (~3.8GB) and cached locally after that.
+# ── AI provider ──────────────────────────────────────────────────────────
+# Which provider powers cross-document contradiction detection, redline
+# generation, and Chat with Contract's answer synthesis: "local" (default)
+# or "gemini". Every other feature (upload, parsing, dependency graph,
+# completeness check, obligation extraction) works regardless of this
+# setting.
+AI_PROVIDER=local
+
+# Local LLM (used when AI_PROVIDER=local) -- no API key, runs entirely
+# on-machine via llama-cpp-python. The GGUF file below is downloaded once
+# from Hugging Face Hub on first use (~3.8GB) and cached locally after that.
 #
 # Defaults to the 7B model, not the smaller/faster 3B: verified directly that
 # the 3B model missed a real, unambiguous payment-term contradiction that the
@@ -818,6 +829,12 @@ LOCAL_LLM_REPO_ID=Qwen/Qwen2.5-7B-Instruct-GGUF
 LOCAL_LLM_FILENAME=qwen2.5-7b-instruct-q3_k_m.gguf
 LOCAL_LLM_CONTEXT_SIZE=4096
 
+# Google / Gemini (used only when AI_PROVIDER=gemini) -- an optional,
+# faster alternative if you have your own key. Never commit this file with
+# a real key in it, and never paste a real key anywhere outside this file.
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-flash-lite-latest
+
 # ── Upload limits ────────────────────────────────────────────────────────
 # Maximum accepted upload size, in megabytes.
 MAX_UPLOAD_MB=25
@@ -827,12 +844,15 @@ MAX_UPLOAD_MB=25
 |---|---|---|---|
 | `USE_FIREBASE` | No | `false` | `true` to persist to real Firestore; `false` uses a local JSON-file store under `backend/local_data/`. |
 | `FIREBASE_CREDENTIALS_PATH` | Only if `USE_FIREBASE=true` | `./firebase-credentials.json` | Path to a Firebase Admin SDK service-account key. |
+| `AI_PROVIDER` | No | `local` | `local` or `gemini` -- selects which module `app/services/ai_client.py` dispatches to. |
 | `LOCAL_LLM_REPO_ID` | No | `Qwen/Qwen2.5-7B-Instruct-GGUF` | Hugging Face repo the GGUF model is downloaded from. |
 | `LOCAL_LLM_FILENAME` | No | `qwen2.5-7b-instruct-q3_k_m.gguf` | Exact GGUF filename within that repo. |
 | `LOCAL_LLM_CONTEXT_SIZE` | No | `4096` | Context window (tokens) the model is loaded with. |
+| `GEMINI_API_KEY` | Only if `AI_PROVIDER=gemini` | *(empty)* | Google Gen AI API key powering contradiction detection, redlining, and chat when Gemini is selected. |
+| `GEMINI_MODEL` | No | `gemini-flash-lite-latest` | Gemini model ID. On a free-tier key, the full "flash" tier can return `503` under load; `flash-lite` has separate quota and responded reliably in testing. |
 | `MAX_UPLOAD_MB` | No | `25` | Maximum accepted document upload size. |
 
-> No `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or any other AI provider credential exists anywhere in this project's configuration — there is nothing to leak and nothing to rotate.
+> **Secrets discipline:** `GEMINI_API_KEY` only ever belongs in `backend/.env` (already gitignored). Never commit it, never paste it into a chat, issue, commit message, or PR — and if one ever ends up somewhere it shouldn't, treat it as compromised and rotate it immediately in [Google AI Studio](https://aistudio.google.com/apikey), regardless of whether it was actually used.
 
 > **No frontend `.env` is required.** The frontend talks to the backend exclusively through a same-origin `/api` proxy configured in `vite.config.ts` — there is no Firebase Web SDK config and no API keys ever reach the browser (see [Security](#-security)).
 
@@ -872,7 +892,7 @@ npm run preview    # local preview of the production build
 docker compose up --build
 ```
 
-Then open **http://localhost:5173**. This runs two containers — `backend` (FastAPI + the local LLM, port 8000) and `frontend` (an nginx-served static build that reverse-proxies `/api/*` to `backend`, port 5173→80) — with `USE_FIREBASE=false` (local-disk storage) so it works with zero external setup. Two named volumes persist state across restarts: `backend_local_data` (uploaded documents) and `hf_cache` (the downloaded GGUF + embedding models, so you don't redownload several GB every time you restart the container).
+Then open **http://localhost:5173**. This runs two containers — `backend` (FastAPI + the local LLM, port 8000) and `frontend` (an nginx-served static build that reverse-proxies `/api/*` to `backend`, port 5173→80) — with `USE_FIREBASE=false` (local-disk storage) and `AI_PROVIDER=local` (the config default) so it works with zero external setup. Two named volumes persist state across restarts: `backend_local_data` (uploaded documents) and `hf_cache` (the downloaded GGUF + embedding models, so you don't redownload several GB every time you restart the container). To use Gemini instead, add `AI_PROVIDER=gemini` and `GEMINI_API_KEY=...` under `backend`'s `environment:` in `docker-compose.yml` (never commit a real key there).
 
 > **Memory note:** Docker Desktop's default memory limit (often 2-4GB on Windows/Mac) is not enough for this project's local models (~3.8GB LLM + ~1.3GB embedding model resident at once — see [Performance](#-performance)). Increase it in Docker Desktop's settings (Resources → Memory) to at least 8GB before running this.
 >
@@ -1215,7 +1235,7 @@ Can be called more than once on the same entry — correcting a decision after a
 
 ### `POST /chat/ask`
 
-**Purpose.** Ask a free-form question about an MSA/SOW pair — see [feature 15](#15-chat-with-contract-rag). Embedding/retrieval and answer synthesis are both local — no AI provider, no API key.
+**Purpose.** Ask a free-form question about an MSA/SOW pair — see [feature 15](#15-chat-with-contract-rag). Embedding/retrieval is always local regardless of `AI_PROVIDER`; answer synthesis uses whichever provider is configured (local by default, no API key).
 
 **Request:**
 
@@ -1332,9 +1352,9 @@ flowchart LR
 | **Dependency graph + cycle detection** | Deterministic | `networkx` graph build, `simple_cycles()` for circular references and override conflicts. |
 | **Completeness / refusal check** | Deterministic | Doc-set-aware missing-reference gating — the guardrail that decides what's even eligible for AI analysis. |
 | **Topic alignment** | Deterministic | Regex classification of clause headings against the (user-editable) topic taxonomy. |
-| **Contradiction judgment** | **AI (local Qwen2.5-7B, no API key)** | One structured-output call **per aligned, non-gated topic pair** — never per-document, never per-token streaming chat. |
+| **Contradiction judgment** | **AI (local Qwen2.5-7B by default, or Gemini)** | One structured-output call **per aligned, non-gated topic pair** — never per-document, never per-token streaming chat. |
 | **Obligation extraction** | Deterministic | Regex modal-verb + deadline extraction, no LLM involvement at all. |
-| **Redline drafting** | **AI (local Qwen2.5-7B, no API key)** | One structured-output call per flagged clause a reviewer chooses to redline. |
+| **Redline drafting** | **AI (local Qwen2.5-7B by default, or Gemini)** | One structured-output call per flagged clause a reviewer chooses to redline. |
 | **Word-level diff** | Deterministic | `diff-match-patch` word-boundary diffing between original and the local model's suggested text. |
 
 There is **no chunking, embedding, or vector search step** in this pipeline (see [Retrieval & Context Handling](#-retrieval--context-handling) for why, and what would change that).
@@ -1361,7 +1381,7 @@ This doesn't mean multi-agent orchestration has no place here — a genuinely op
 
 ## 📊 Model Evaluation
 
-Real, measured accuracy for the local model's contradiction judgment — not just spot-checks — using **ContractNLI** (Koreeda & Manning, EMNLP Findings 2021), a real, human-annotated legal NLI dataset already used elsewhere in this project (see [feature 9](#9-multi-source-legal-reference-library)).
+Real, measured accuracy for the **local (default) provider's** contradiction judgment — not just spot-checks — using **ContractNLI** (Koreeda & Manning, EMNLP Findings 2021), a real, human-annotated legal NLI dataset already used elsewhere in this project (see [feature 9](#9-multi-source-legal-reference-library)). This evaluation is specific to the local Qwen2.5-7B model; no equivalent quantitative evaluation has been run against the optional Gemini provider.
 
 **Important scope caveat, up front:** `CONTRADICTION_SYSTEM_PROMPT` (`app/services/ai_schemas.py`) is hardcoded to "MSA clause vs. SOW clause" framing, since that's the app's actual production task. ContractNLI is a different task shape — a single NDA clause vs. a fixed hypothesis statement — so this evaluation uses a generic contradiction-vs-entailment prompt appropriate to *that* shape, calling the exact same underlying model and grammar-constrained JSON mechanism (`local_llm_client._structured_chat_completion`) the production code uses. It measures the local model's general contradiction-judgment capability, not a literal replay of the production MSA/SOW prompt. The script is committed at `backend/scripts/evaluate_contradiction_model.py` — every input, output, and label it uses is inspectable there and in `backend/eval_results/`.
 
@@ -1409,12 +1429,13 @@ LexTwin AI uses **two different context strategies, deliberately**, depending on
 ```
 Question ──▶ embed (BAAI/bge-large-en-v1.5) ──▶ FAISS cosine search over
     all clauses' embeddings (embedded once per doc pair, in-process cache)
-    ──▶ top-8 clauses ──▶ numbered context block ──▶ local LLM
-    (Qwen2.5-7B-Instruct) synthesizes a grounded answer + cites which
-    numbered clauses it used ──▶ backend maps citations back to clause_ids
+    ──▶ top-8 clauses ──▶ numbered context block ──▶ configured AI provider
+    (Qwen2.5-7B-Instruct by default, or Gemini) synthesizes a grounded
+    answer + cites which numbered clauses it used ──▶ backend maps
+    citations back to clause_ids
 ```
 
-Embedding/vector search and answer synthesis **both run entirely locally** — two separate local models (`app/rag/embedder.py`'s BGE embedding model and `app/services/local_llm_client.py`'s Qwen2.5-7B), neither requiring an API key. The final answer-synthesis step uses the same structured-output pattern used everywhere else in the app (a `ChatAnswer` schema with `answer` + `cited_refs`, grammar-constrained and Pydantic-validated before it can reach the frontend).
+Embedding/vector search **always run entirely locally**, regardless of `AI_PROVIDER` (`app/rag/embedder.py`'s BGE embedding model, no API key, since embedding is retrieval infrastructure, not a judgment call). The final answer-synthesis step uses whichever provider is configured — the local Qwen2.5-7B model (`app/services/local_llm_client.py`) by default, or Gemini — with the same structured-output pattern used everywhere else in the app (a `ChatAnswer` schema with `answer` + `cited_refs`, schema-validated before it can reach the frontend).
 
 **A known, honest limitation:** dense single-vector retrieval genuinely struggles with *compound* questions (e.g. *"what are the payment terms, and is there a conflict between the MSA and SOW?"*) — the embedding ends up representing an average of both sub-questions, which can pull retrieval toward clauses about the MSA/SOW *relationship* in general rather than the specific payment clauses. Verified directly: for that exact compound phrasing, the actually-relevant `SOW §3.3` clause didn't appear even at `top_k=12`. Single, focused questions retrieve reliably. This is a well-known characteristic of naive dense retrieval, not a bug — query decomposition or hybrid (keyword + semantic) search would address it, and both are listed in the [Roadmap](#-future-enhancements--roadmap).
 
@@ -1450,12 +1471,12 @@ An honest accounting of what's in place and what isn't:
 |---|---|
 | **Authentication** | Not implemented. No login, no user accounts, no session management. Intended for local/demo/single-tenant use today. |
 | **Authorization** | Not applicable without authentication — every API endpoint is currently open to whoever can reach the backend process. |
-| **Secrets management** | `.env` (gitignored) for the Firebase config path — there is no AI provider API key anywhere in this project, so there's nothing there to leak. `firebase-credentials.json` (gitignored) for the service-account key. Neither is ever sent to the frontend. |
+| **Secrets management** | `.env` (gitignored) for the Firebase config path and, if `AI_PROVIDER=gemini`, `GEMINI_API_KEY`. Under the default local provider there is no AI provider API key at all. `firebase-credentials.json` (gitignored) for the service-account key. None of these are ever sent to the frontend. **A real key must never be pasted into chat, a commit, an issue, or a PR** — treat any key that ends up somewhere it shouldn't as compromised and rotate it immediately, regardless of whether it was actually used. |
 | **Firebase access model** | Server-side only via the Admin SDK with a service-account credential — the frontend has zero direct Firebase access, so there is no client-side attack surface on Firestore. |
-| **No external AI API calls at all** | Contradiction detection, redlining, and Chat with Contract's answer synthesis all run locally via `llama-cpp-python` — clause text (which may be confidential contract content) never leaves the machine running the backend, unlike a hosted-API architecture. |
-| **Prompt-injection exposure** | The local model call uses **grammar-constrained structured output** (`response_format={"type": "json_object", "schema": <PydanticModel>.model_json_schema()}`) with a narrow, fixed system prompt and a bounded input (one or two clause texts). This substantially limits — though does not formally eliminate — the blast radius of adversarial text embedded in a clause: even a successfully "injected" response is still forced through the same fixed JSON schema before it can reach the frontend. Note that grammar constraints enforce JSON *shape* (valid structure, required fields, correct types), not numeric-range semantics — a defensive Pydantic validator normalizes fields like `confidence` for exactly this gap (see `app/services/ai_schemas.py`). |
-| **Hallucination mitigation** | The [missing-reference refusal guardrail](#6-missing-reference-refusal-guardrail) is a hard, code-level precondition — a clause is never sent to the local model for contradiction analysis if a document it structurally depends on is absent from the upload set. This is enforced before any inference call is constructed, not policed after the fact. |
-| **Rate limiting** | Not implemented on the LexTwin API layer, and not needed for the local model (no external rate limit to hit) — though unbounded concurrent inference requests could still exhaust local CPU/RAM (see [Performance](#-performance)). |
+| **AI provider data exposure** | Under the default local provider, contradiction detection, redlining, and Chat with Contract's answer synthesis all run locally via `llama-cpp-python` — clause text (which may be confidential contract content) never leaves the machine running the backend. Switching to `AI_PROVIDER=gemini` sends that same clause text to Google's API instead — an explicit, visible tradeoff you opt into, not a hidden default. |
+| **Prompt-injection exposure** | Both providers use **structured output** (the local model's grammar-constrained `response_format={"type": "json_object", "schema": ...}`, Gemini's `response_schema=<PydanticModel>`) with a narrow, fixed system prompt and a bounded input (one or two clause texts). This substantially limits — though does not formally eliminate — the blast radius of adversarial text embedded in a clause: even a successfully "injected" response is still forced through the same fixed JSON schema before it can reach the frontend. Note that the local provider's grammar constraints enforce JSON *shape* (valid structure, required fields, correct types), not numeric-range semantics — a defensive Pydantic validator normalizes fields like `confidence` for exactly this gap (see `app/services/ai_schemas.py`). |
+| **Hallucination mitigation** | The [missing-reference refusal guardrail](#6-missing-reference-refusal-guardrail) is a hard, code-level precondition — a clause is never sent to the configured AI provider for contradiction analysis if a document it structurally depends on is absent from the upload set. This is enforced before any API/inference call is constructed, not policed after the fact. |
+| **Rate limiting** | Not implemented on the LexTwin API layer. The local provider has no external rate limit to hit, though unbounded concurrent inference requests could exhaust local CPU/RAM (see [Performance](#-performance)); the Gemini provider is subject to Google's own API-level rate limits and SDK retry/backoff. |
 | **Input validation** | File uploads are size-capped (`MAX_UPLOAD_MB`) and filename-sanitized (alphanumeric + `._-` only) before being written to a temp path; all request/response bodies are Pydantic-validated. |
 | **Dependency/CORS scope** | CORS is currently locked to `http://localhost:5173` — a real deployment must update this to the actual frontend origin, not `*`. |
 
@@ -1477,6 +1498,8 @@ See [Roadmap](#-future-enhancements--roadmap) for authentication, authorization,
 | **Test suite runtime** | 208 tests total. The default suite (`slow`-marked tests excluded via `pytest.ini`) runs in well under a minute. The full suite — including real-contract-parsing, real-embedding-model, and real-local-LLM-inference tests — runs in roughly 4 minutes, dominated by the local model actually generating a contradiction judgment against real sample contracts. |
 | **Graph rendering** | React Flow handles moderate node/edge counts (tens to low hundreds) smoothly client-side; not yet load-tested against very large multi-hundred-clause contract sets. |
 
+All of the above (local inference cost, memory footprint, concurrent-request serialization) is specific to the **default local provider**. Switching to `AI_PROVIDER=gemini` trades those costs for a hosted API round trip instead — no multi-minute local inference, no multi-GB resident model, no need to serialize concurrent requests through a single local context — at the cost of needing your own API key and sending clause text to Google's servers (see [Security](#-security)).
+
 See [Roadmap](#-future-enhancements--roadmap) for planned caching, async inference calls, and streaming improvements.
 
 ---
@@ -1491,7 +1514,7 @@ The frontend is a standard Vite + React static build (`npm run build` → `front
 
 ### Backend deployment (recommended: Render)
 
-The backend is a standard FastAPI app served by `uvicorn`, which deploys cleanly to Render, Railway, Fly.io, or any Python-capable PaaS. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set `USE_FIREBASE` and (if applicable) mount `firebase-credentials.json` as a secret file via the platform's environment/secret configuration — no AI provider API key is needed since contradiction detection, redlining, and Chat with Contract's answer synthesis all run locally. **Sizing note:** since the local LLM and embedding model both run in-process (see [Performance](#-performance)), pick a plan with enough RAM (8GB+ recommended) and CPU headroom for the host, not just enough for a typical lightweight API service.
+The backend is a standard FastAPI app served by `uvicorn`, which deploys cleanly to Render, Railway, Fly.io, or any Python-capable PaaS. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set `USE_FIREBASE` and (if applicable) mount `firebase-credentials.json` as a secret file via the platform's environment/secret configuration. With the default `AI_PROVIDER=local`, no AI provider API key is needed at all. **Sizing note for the local provider:** since the local LLM and embedding model both run in-process (see [Performance](#-performance)), pick a plan with enough RAM (8GB+ recommended) and CPU headroom for the host, not just enough for a typical lightweight API service — or set `AI_PROVIDER=gemini` with your own `GEMINI_API_KEY` to avoid that sizing requirement entirely, at the cost of needing a key and per-call API cost.
 
 **Before deploying, update `app/main.py`'s `CORSMiddleware`** to allow your real frontend origin instead of `http://localhost:5173`.
 
@@ -1597,8 +1620,9 @@ This project is licensed under the **MIT License** — see [LICENSE](./LICENSE) 
 
 ## 🙏 Acknowledgements
 
-- **[Qwen team, Alibaba](https://huggingface.co/Qwen)** — Qwen2.5-7B-Instruct, the local model powering contradiction detection, redline drafting, and Chat with Contract's answer synthesis.
+- **[Qwen team, Alibaba](https://huggingface.co/Qwen)** — Qwen2.5-7B-Instruct, the default local model powering contradiction detection, redline drafting, and Chat with Contract's answer synthesis.
 - **[llama.cpp](https://github.com/ggml-org/llama.cpp)** and **[llama-cpp-python](https://github.com/abetlen/llama-cpp-python)** — local GGUF model inference, including grammar-constrained (GBNF) structured JSON output.
+- **[Google](https://ai.google.dev/)** — Gemini API via the `google-genai` SDK, the optional alternative AI provider (`AI_PROVIDER=gemini`).
 - **[The Atticus Project](https://www.atticusprojectai.org/)** — CUAD v1 dataset.
 - **[LexGLUE](https://github.com/coastalcph/lex-glue)** (Chalkidis et al.) — LEDGAR and Unfair ToS datasets.
 - **[Stanford NLP Group](https://stanfordnlp.github.io/contract-nli/)** — ContractNLI dataset (Koreeda & Manning, EMNLP Findings 2021).

@@ -9,12 +9,19 @@ diff-match-patch==20230430
 firebase-admin==6.5.0
 
 # Local LLM (contradiction detection, redlining, Chat with Contract answer
-# synthesis) -- no API key, runs entirely on-machine. Downloads a ~2GB GGUF
-# model from Hugging Face Hub on first use (see app/services/local_llm_client.py).
-# May need a C++ build toolchain (CMake + MSVC/gcc/clang) to compile if no
-# prebuilt wheel matches your platform/Python version -- took ~12 minutes to
-# build from source on this project's dev machine.
+# synthesis) -- the default provider (AI_PROVIDER=local), no API key, runs
+# entirely on-machine. Downloads a ~3.8GB GGUF model from Hugging Face Hub on
+# first use (see app/services/local_llm_client.py). May need a C++ build
+# toolchain (CMake + MSVC/gcc/clang) to compile if no prebuilt wheel matches
+# your platform/Python version -- took ~12 minutes to build from source on
+# this project's dev machine.
 llama-cpp-python==0.3.34
+
+# Gemini -- an OPTIONAL, openly-documented alternative provider
+# (AI_PROVIDER=gemini) for faster responses if you have your own API key.
+# Not used unless explicitly configured -- see app/services/gemini_client.py
+# and the README's Environment Variables section.
+google-genai==2.11.0
 
 # Chat with Contract (RAG) retrieval: local embeddings + vector search, a
 # SEPARATE local model from the one above -- retrieval is deterministic math
