@@ -11,9 +11,17 @@ export interface ContradictionResult {
   reason: string | null
 }
 
+export interface UnmatchedClause {
+  doc_id: string
+  clause_id: string
+  section_number: string
+  heading: string | null
+}
+
 export interface ContradictionAnalysis {
   msa_doc_id: string
   sow_doc_id: string
   results: ContradictionResult[]
   contradictions_found: number
+  unmatched_clauses: UnmatchedClause[]
 }

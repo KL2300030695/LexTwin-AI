@@ -3,13 +3,16 @@
 Pipeline: align clauses by topic (deterministic, app/contradiction), skip any
 pair where either clause is blocked by the Phase 4 missing-reference check
 (refuse to evaluate rather than guess), then ask the configured AI provider
-to judge the remaining pairs (app/services/ai_client, Claude or Gemini).
+to judge the remaining pairs (app/services/ai_client, local by default or
+Gemini). Clauses whose heading matched no configured topic never form a pair
+at all -- unmatched_clauses on the result surfaces those separately, so a
+real topic the Playbook doesn't recognize isn't silently invisible.
 """
 from __future__ import annotations
 
 from app.completeness import check_completeness
-from app.contradiction.topic_alignment import align_clauses
-from app.models.contradiction import ContradictionAnalysis, ContradictionResult, ContradictionStatus
+from app.contradiction.topic_alignment import align_clauses, find_unmatched_clauses
+from app.models.contradiction import ContradictionAnalysis, ContradictionResult, ContradictionStatus, UnmatchedClause
 from app.services.ai_client import AIClientError, check_contradiction
 from app.services.document_service import get_document
 
@@ -87,9 +90,20 @@ def analyze_contradictions(msa_doc_id: str, sow_doc_id: str) -> ContradictionAna
         1 for r in results if r.status == ContradictionStatus.ANALYZED and r.has_contradiction
     )
 
+    unmatched_clauses = [
+        UnmatchedClause(
+            doc_id=u.doc_id,
+            clause_id=u.clause.id,
+            section_number=u.clause.section_number or "",
+            heading=u.clause.heading,
+        )
+        for u in find_unmatched_clauses(msa, sow)
+    ]
+
     return ContradictionAnalysis(
         msa_doc_id=msa_doc_id,
         sow_doc_id=sow_doc_id,
         results=results,
         contradictions_found=contradictions_found,
+        unmatched_clauses=unmatched_clauses,
     )

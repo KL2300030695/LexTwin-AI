@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 
 
 class ContradictionStatus(str, Enum):
-    ANALYZED = "analyzed"           # Claude produced a judgment
+    ANALYZED = "analyzed"           # the configured AI provider produced a judgment
     CANNOT_EVALUATE = "cannot_evaluate"  # skipped -- a missing reference (Phase 4) blocks either clause
-    ERROR = "error"                 # the LLM call failed after retries
+    ERROR = "error"                 # the AI provider call failed after retries
 
 
 class ContradictionResult(BaseModel):
@@ -23,8 +23,22 @@ class ContradictionResult(BaseModel):
     reason: str | None = None        # populated for cannot_evaluate / error
 
 
+class UnmatchedClause(BaseModel):
+    """A clause with body text whose heading matched no configured Playbook
+    topic -- it never became a comparison candidate in `results[]` at all,
+    not even a `cannot_evaluate` entry. Without this list, that clause is
+    silently invisible: contradiction detection never looked at it, and
+    nothing says so. See app/contradiction/topic_alignment.py."""
+
+    doc_id: str
+    clause_id: str
+    section_number: str
+    heading: str | None = None
+
+
 class ContradictionAnalysis(BaseModel):
     msa_doc_id: str
     sow_doc_id: str
     results: list[ContradictionResult] = Field(default_factory=list)
     contradictions_found: int = 0
+    unmatched_clauses: list[UnmatchedClause] = Field(default_factory=list)

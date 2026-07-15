@@ -269,17 +269,19 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **How it works.** A default list of ~15 topics (Payment Terms, Termination, Liability, Indemnification, Confidentiality, Intellectual Property, Service Levels, Governing Law, Insurance, Assignment, Audit Rights, Warranty, Non-Compete/Exclusivity, Dispute Resolution, Change Management) ships out of the box, each with case-insensitive regex patterns matched against clause headings (e.g. Payment Terms: `\binvoic`, `\bpayment terms\b`). This config is persisted in Firestore (collection `playbook_config`) and fully editable from the **Playbook** page in the UI — add a topic, edit its patterns, remove one, or reset to defaults, with changes taking effect on the next analysis.
 
+**A clause whose heading matches no configured topic is reported, not silently dropped.** Topic alignment only pairs clauses that match a *shared* topic in both documents — a real limitation, since a clause about a genuine topic your Playbook doesn't recognize (or a differently-worded heading for a topic it does) never becomes a comparison candidate. Rather than that being invisible, `find_unmatched_clauses()` (`app/contradiction/topic_alignment.py`) surfaces every clause with body text whose heading matched nothing, returned as `unmatched_clauses[]` on the contradiction analysis response and shown in the Risk Flags list as a low-severity **"Not Compared"** entry — verified live against the real sample contract: 20 clauses (definitions, term length, ownership of work product, exhibits, key personnel, and more) surfaced this way on a single analysis run. This doesn't fix the coverage gap itself, but it means the gap is now visible and actionable (add a pattern in the Playbook) instead of silent.
+
 **Input.** User edits via `PUT /api/playbook/topics`, or the defaults.
 
-**Processing.** Regex compilation once per analysis run → first-match classification of every clause heading in both documents → pairing clauses that land in the same topic.
+**Processing.** Regex compilation once per analysis run → first-match classification of every clause heading in both documents → pairing clauses that land in the same topic → separately, collecting every non-empty clause that matched no topic at all.
 
-**Output.** `TopicRule[]` (`{topic, patterns[]}`); internally, an aligned-clause-pair list feeding contradiction detection.
+**Output.** `TopicRule[]` (`{topic, patterns[]}`); internally, an aligned-clause-pair list feeding contradiction detection, plus an `unmatched_clauses[]` coverage report.
 
 **Technologies used.** Python `re`, Firestore-backed persistence via the same storage abstraction used everywhere else in the app.
 
-**Benefits.** Deliberately kept small and user-editable rather than auto-expanded from the reference datasets below — adding a new topic to the live config is an explicit, cost-aware decision by the user (every additional topic is a potential additional AI provider call per analysis), not something the app silently does on your behalf.
+**Benefits.** Deliberately kept small and user-editable rather than auto-expanded from the reference datasets below — adding a new topic to the live config is an explicit, cost-aware decision by the user (every additional topic is a potential additional AI provider call per analysis), not something the app silently does on your behalf. The coverage report closes the silent half of that tradeoff: you can now see exactly what a narrow topic list is failing to catch.
 
-**Possible improvements.** Currently a single global config (not per-project/per-team); pattern authoring is regex-only with no visual builder yet.
+**Possible improvements.** Currently a single global config (not per-project/per-team); pattern authoring is regex-only with no visual builder yet; the coverage report tells you *what* was skipped but doesn't suggest a pattern to fix it.
 
 ---
 

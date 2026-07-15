@@ -77,3 +77,30 @@ def align_clauses(msa: ParsedDocument, sow: ParsedDocument) -> list[ClausePairCa
         ClausePairCandidate(topic=topic, msa_clause=msa_topics[topic], sow_clause=sow_topics[topic])
         for topic in shared
     ]
+
+
+@dataclass
+class UnmatchedClauseInfo:
+    doc_id: str
+    clause: Clause
+
+
+def find_unmatched_clauses(msa: ParsedDocument, sow: ParsedDocument) -> list[UnmatchedClauseInfo]:
+    """Clauses (with a section number and non-empty body text) whose heading
+    matched no configured playbook topic. These never become a
+    ClausePairCandidate in align_clauses() -- they don't get compared, don't
+    get a `cannot_evaluate` result, and don't appear anywhere in
+    ContradictionAnalysis.results. That's a real coverage gap distinct from
+    the missing-reference guardrail: the guardrail visibly refuses a pair it
+    already formed, whereas an unmatched clause never forms a pair in the
+    first place, so there was nothing to refuse and nothing to report --
+    until this function surfaces it as a separate, honest list."""
+    compiled = _compile_rules(get_topic_rules())
+    unmatched: list[UnmatchedClauseInfo] = []
+    for doc_id, clauses in ((msa.doc_id, msa.clauses), (sow.doc_id, sow.clauses)):
+        for clause in clauses:
+            if not clause.section_number or not clause.text or not clause.text.strip():
+                continue
+            if classify_topic(clause.heading, compiled) is None:
+                unmatched.append(UnmatchedClauseInfo(doc_id=doc_id, clause=clause))
+    return unmatched

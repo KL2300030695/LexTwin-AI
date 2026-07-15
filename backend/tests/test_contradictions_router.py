@@ -65,6 +65,7 @@ def test_analyze_endpoint_returns_contradiction_json():
     assert result["status"] == "analyzed"
     assert result["has_contradiction"] is True
     assert result["confidence"] == 0.97
+    assert body["unmatched_clauses"] == []
 
 
 def test_analyze_endpoint_404_for_missing_document():

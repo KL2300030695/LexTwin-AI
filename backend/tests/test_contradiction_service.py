@@ -147,3 +147,24 @@ def test_no_shared_topics_produces_no_results():
     mock_check.assert_not_called()
     assert result.results == []
     assert result.contradictions_found == 0
+    # Neither clause matched a playbook topic -- both should surface in the
+    # coverage report rather than silently vanishing.
+    assert {u.clause_id for u in result.unmatched_clauses} == {"msa1::1", "sow1::1"}
+
+
+def test_unmatched_clause_alongside_a_real_pair(msa_and_sow):
+    """A clause with no topic match is reported in unmatched_clauses even
+    when other clauses in the same document set DID align and get analyzed."""
+    msa, sow = msa_and_sow
+    msa.clauses.append(_clause("msa1", DocType.MSA, "8.1", "Data Security Requirements", "Encrypt data at rest."))
+    docs = {"msa1": msa, "sow1": sow}
+    fake_judgment = ContradictionJudgment(has_contradiction=False, explanation="Consistent.", confidence=0.8)
+
+    with patch("app.services.contradiction_service.get_document", side_effect=_mock_get_document(docs)), \
+         patch("app.services.contradiction_service.check_contradiction", return_value=fake_judgment):
+        result = analyze_contradictions("msa1", "sow1")
+
+    assert len(result.results) == 1  # the Payment Terms pair, analyzed normally
+    assert len(result.unmatched_clauses) == 1
+    assert result.unmatched_clauses[0].clause_id == "msa1::8.1"
+    assert result.unmatched_clauses[0].heading == "Data Security Requirements"

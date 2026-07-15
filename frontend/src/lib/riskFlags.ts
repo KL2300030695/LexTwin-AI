@@ -9,6 +9,7 @@ export type RiskFlagKind =
   | 'missing_reference'
   | 'broken_reference'
   | 'blanket_override'
+  | 'not_compared'
 
 export type RiskSeverity = 'high' | 'medium' | 'low'
 
@@ -29,6 +30,7 @@ const KIND_LABEL: Record<RiskFlagKind, string> = {
   missing_reference: 'Missing Reference',
   broken_reference: 'Broken Reference',
   blanket_override: 'Blanket Override',
+  not_compared: 'Not Compared',
 }
 
 export function riskFlagLabel(kind: RiskFlagKind): string {
@@ -64,6 +66,23 @@ export function buildRiskFlags(
           contradiction: r,
         })
       }
+    }
+
+    // A clause whose heading matched no configured Playbook topic never
+    // becomes a comparison pair at all -- not even a "cannot evaluate"
+    // result. Without this, it's silently invisible: nothing here says
+    // contradiction detection never looked at it. See
+    // app/contradiction/topic_alignment.py's find_unmatched_clauses().
+    for (const u of contradictions.unmatched_clauses) {
+      flags.push({
+        id: `not-compared-${u.clause_id}`,
+        kind: 'not_compared',
+        severity: 'low',
+        title: `Not compared: "${u.heading ?? u.section_number}" matches no Playbook topic`,
+        description:
+          'This clause was never checked against the other document -- add a topic pattern in the Playbook if it should be.',
+        clauseIds: [u.clause_id],
+      })
     }
   }
 

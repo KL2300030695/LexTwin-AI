@@ -1,4 +1,4 @@
-from app.contradiction.topic_alignment import align_clauses, classify_topic
+from app.contradiction.topic_alignment import align_clauses, classify_topic, find_unmatched_clauses
 from app.models.schema import Clause, DocType, ParsedDocument
 
 
@@ -100,3 +100,45 @@ def test_align_clauses_empty_documents():
     msa = _doc("msa1", DocType.MSA, [])
     sow = _doc("sow1", DocType.SOW, [])
     assert align_clauses(msa, sow) == []
+
+
+def test_find_unmatched_clauses_reports_clauses_with_no_topic_match():
+    """A clause whose heading matches no configured topic never becomes an
+    align_clauses() pair -- find_unmatched_clauses() is the coverage report
+    that surfaces it, since otherwise it's invisible: no result entry, no
+    cannot_evaluate status, nothing."""
+    msa = _doc("msa1", DocType.MSA, [
+        _clause("msa1", DocType.MSA, "5.1", "Invoicing and Payment", "Pay within 45 days."),
+        _clause("msa1", DocType.MSA, "8.1", "Data Security Requirements", "Encrypt data at rest."),
+    ])
+    sow = _doc("sow1", DocType.SOW, [
+        _clause("sow1", DocType.SOW, "3.3", "Invoice Terms", "Pay within 15 days."),
+    ])
+
+    unmatched = find_unmatched_clauses(msa, sow)
+    assert len(unmatched) == 1
+    assert unmatched[0].doc_id == "msa1"
+    assert unmatched[0].clause.section_number == "8.1"
+
+
+def test_find_unmatched_clauses_excludes_matched_clauses():
+    msa = _doc("msa1", DocType.MSA, [
+        _clause("msa1", DocType.MSA, "5.1", "Invoicing and Payment", "Pay within 45 days."),
+    ])
+    sow = _doc("sow1", DocType.SOW, [
+        _clause("sow1", DocType.SOW, "3.3", "Invoice Terms", "Pay within 15 days."),
+    ])
+    assert find_unmatched_clauses(msa, sow) == []
+
+
+def test_find_unmatched_clauses_excludes_empty_text_and_missing_section_number():
+    msa = _doc("msa1", DocType.MSA, [
+        _clause("msa1", DocType.MSA, "5", "Fees And Payment Terms", text=""),  # header only
+        Clause(
+            id="msa1::preamble", doc_id="msa1", doc_type=DocType.MSA, section_number=None,
+            parent_section=None, level=0, heading="Preamble", text="Some preamble text.",
+            page_start=1, page_end=1,
+        ),
+    ])
+    sow = _doc("sow1", DocType.SOW, [])
+    assert find_unmatched_clauses(msa, sow) == []
