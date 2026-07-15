@@ -16,10 +16,20 @@ from __future__ import annotations
 
 import json
 import shutil
+import threading
 from pathlib import Path
 from typing import Any, Optional
 
 from app.config import settings
+
+# FastAPI runs sync endpoints in a thread pool -- several requests can reach
+# get_store()'s "not yet initialized" check at the same instant (e.g. the
+# workspace page's Promise.all of several parallel API calls, right after a
+# fresh backend start). Without a lock, two threads can both pass the
+# `_store is None` check before either finishes initializing, and the second
+# firebase_admin.initialize_app() call raises "the default Firebase app
+# already exists".
+_init_lock = threading.Lock()
 
 _firestore_client = None
 
@@ -159,8 +169,11 @@ def get_store() -> DocumentStore:
     global _store
     if _store is not None:
         return _store
-    if settings.USE_FIREBASE:
-        _store = FirestoreDocumentStore()
-    else:
-        _store = LocalDocumentStore(settings.LOCAL_DATA_DIR)
-    return _store
+    with _init_lock:
+        if _store is not None:  # another thread finished initializing while we waited
+            return _store
+        if settings.USE_FIREBASE:
+            _store = FirestoreDocumentStore()
+        else:
+            _store = LocalDocumentStore(settings.LOCAL_DATA_DIR)
+        return _store

@@ -50,6 +50,23 @@ def test_decision_endpoint_approves_entry():
     assert body["decided_at"] is not None
 
 
+def test_decision_endpoint_allows_changing_an_already_decided_entry():
+    entry = client.post("/api/audit/entries", json=_create_payload()).json()
+    client.post(f"/api/audit/entries/{entry['id']}/decision", json={"decision": "approved", "reviewer": "alice"})
+
+    response = client.post(
+        f"/api/audit/entries/{entry['id']}/decision",
+        json={"decision": "rejected", "reviewer": "bob"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision"] == "rejected"
+    assert body["reviewer"] == "bob"
+    assert len(body["revision_history"]) == 1
+    assert body["revision_history"][0]["decision"] == "approved"
+    assert body["revision_history"][0]["reviewer"] == "alice"
+
+
 def test_decision_endpoint_404_for_missing_entry():
     response = client.post(
         "/api/audit/entries/audit-nope/decision",

@@ -13,6 +13,17 @@ class AuditDecision(str, Enum):
     REJECTED = "rejected"
 
 
+class AuditRevision(BaseModel):
+    """A prior decision that was later changed. Recorded so a corrected
+    decision is a visible, traceable event rather than a silent overwrite --
+    the whole point of an audit trail is that "we approved this, then
+    realized it was wrong and changed it" is itself part of the record."""
+
+    decision: AuditDecision
+    reviewer: str | None = None
+    decided_at: str | None = None
+
+
 class AuditEntry(BaseModel):
     id: str
     msa_doc_id: str
@@ -28,6 +39,9 @@ class AuditEntry(BaseModel):
     reviewer: str | None = None
     created_at: str
     decided_at: str | None = None
+    # Every decision this entry held before the current one, oldest first.
+    # Empty until a decision is changed after already being set once.
+    revision_history: list[AuditRevision] = Field(default_factory=list)
 
 
 class AuditEntryCreate(BaseModel):

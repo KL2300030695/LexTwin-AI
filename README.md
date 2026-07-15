@@ -375,15 +375,17 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **How it works.** From the risk detail panel, a reviewer can log an `AuditEntry` capturing the original clause text, the risk rating, the AI's suggestion/rationale (if any), and then record a `decision` (`approved`/`rejected`) with an optional `reviewer` name and timestamp. Entries are scoped to the specific MSA/SOW pair and listed chronologically in the workspace's Audit Trail tab.
 
-**Input.** `AuditEntryCreate` (clause + risk context), later a `decision` update.
+**Corrections are part of the trail, not silent overwrites.** A reviewer can click "Change decision" on any already-decided entry to approve/reject it again — but the *previous* decision isn't discarded: `record_decision()` appends it to that entry's `revision_history[]` (decision, reviewer, timestamp) before applying the new one. The UI shows *"Rejected by ... · corrected 1×"* with a "View history" toggle that reveals the superseded decision(s) underneath. If you approve something and later spot an error, fixing it is itself a recorded, visible event — exactly what "maintain a complete audit trail of ... human reviewer decisions" (plural) means for a compliance tool: the correction has to be as auditable as the original call.
 
-**Processing.** Firestore persistence (collection `audit_trail`), decision timestamping.
+**Input.** `AuditEntryCreate` (clause + risk context), later one or more `decision` updates.
 
-**Output.** `AuditEntry[]`, queryable by `msa_doc_id`/`sow_doc_id`.
+**Processing.** Firestore persistence (collection `audit_trail`), decision timestamping, prior-decision preservation on correction.
+
+**Output.** `AuditEntry[]`, queryable by `msa_doc_id`/`sow_doc_id`, each with a `revision_history[]` of any prior decisions.
 
 **Technologies used.** FastAPI, Firestore (or local JSON fallback in dev mode).
 
-**Benefits.** Produces exactly the kind of reviewable, timestamped decision log a legal/compliance team needs for sign-off — nothing in this app silently modifies a contract; every AI output requires an explicit human decision to be recorded as accepted.
+**Benefits.** Produces exactly the kind of reviewable, timestamped decision log a legal/compliance team needs for sign-off — nothing in this app silently modifies a contract; every AI output requires an explicit human decision to be recorded as accepted, and every *correction* to that decision is equally durable and visible rather than an untracked overwrite.
 
 **Possible improvements.** No user authentication yet, so `reviewer` is a free-text field rather than a verified identity (see [Security](#-security)); no bulk-approve workflow for large risk lists.
 
@@ -1159,6 +1161,20 @@ curl -X POST http://127.0.0.1:8000/api/documents/upload \
 { "decision": "approved", "reviewer": "J. Smith" }
 ```
 
+Can be called more than once on the same entry — correcting a decision after an error is found is expected, not blocked. Calling it on an entry that already has a decision moves that prior decision into the response's `revision_history[]` instead of discarding it:
+
+```json
+{
+  "id": "audit-da891ef3e600",
+  "decision": "rejected",
+  "reviewer": "J. Smith",
+  "decided_at": "2026-07-15T12:10:16Z",
+  "revision_history": [
+    { "decision": "approved", "reviewer": "reviewer@example.com", "decided_at": "2026-07-15T12:06:38Z" }
+  ]
+}
+```
+
 **Status codes.** `200` · `404` (decision on an unknown `entry_id`).
 
 ---
@@ -1254,6 +1270,7 @@ erDiagram
         string reviewer
         string created_at
         string decided_at
+        json revision_history "prior decisions, if corrected"
     }
     playbook_config {
         string doc_id PK "always literal id: topic_rules"

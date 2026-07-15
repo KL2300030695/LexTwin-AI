@@ -1,5 +1,11 @@
 export type AuditDecision = 'pending' | 'approved' | 'rejected'
 
+export interface AuditRevision {
+  decision: AuditDecision
+  reviewer: string | null
+  decided_at: string | null
+}
+
 export interface AuditEntry {
   id: string
   msa_doc_id: string
@@ -15,6 +21,7 @@ export interface AuditEntry {
   reviewer: string | null
   created_at: string
   decided_at: string | null
+  revision_history: AuditRevision[]
 }
 
 export interface AuditEntryCreate {

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.firebase import get_store
-from app.models.audit import AuditDecision, AuditEntry, AuditEntryCreate
+from app.models.audit import AuditDecision, AuditEntry, AuditEntryCreate, AuditRevision
 
 AUDIT_COLLECTION = "audit_trail"
 
@@ -45,9 +45,18 @@ def list_entries(msa_doc_id: str | None = None, sow_doc_id: str | None = None) -
 
 
 def record_decision(entry_id: str, decision: AuditDecision, reviewer: str | None) -> AuditEntry:
+    """Records a reviewer decision. If this entry already had a decision
+    (a reviewer is correcting an earlier approve/reject after spotting an
+    error), the previous decision is preserved in revision_history rather
+    than silently overwritten -- the correction itself becomes part of the
+    audit trail, not an erasure of what came before."""
     entry = get_entry(entry_id)
     if entry is None:
         raise ValueError(f"Audit entry not found: {entry_id}")
+    if entry.decision != AuditDecision.PENDING:
+        entry.revision_history.append(
+            AuditRevision(decision=entry.decision, reviewer=entry.reviewer, decided_at=entry.decided_at)
+        )
     entry.decision = decision
     entry.reviewer = reviewer
     entry.decided_at = _now_iso()

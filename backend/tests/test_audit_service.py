@@ -67,3 +67,37 @@ def test_record_decision_missing_entry_raises():
     import pytest
     with pytest.raises(ValueError, match="not found"):
         audit_service.record_decision("audit-nope", AuditDecision.REJECTED, None)
+
+
+def test_changing_a_decision_preserves_the_previous_one_in_history():
+    """A reviewer approves, then later spots an error and rejects instead --
+    the original approval must not be silently erased."""
+    entry = audit_service.create_entry(_sample_create())
+    audit_service.record_decision(entry.id, AuditDecision.APPROVED, reviewer="alice@example.com")
+    corrected = audit_service.record_decision(entry.id, AuditDecision.REJECTED, reviewer="bob@example.com")
+
+    assert corrected.decision == AuditDecision.REJECTED
+    assert corrected.reviewer == "bob@example.com"
+    assert len(corrected.revision_history) == 1
+    assert corrected.revision_history[0].decision == AuditDecision.APPROVED
+    assert corrected.revision_history[0].reviewer == "alice@example.com"
+
+    refetched = audit_service.get_entry(entry.id)
+    assert len(refetched.revision_history) == 1
+
+
+def test_changing_a_decision_multiple_times_accumulates_history_in_order():
+    entry = audit_service.create_entry(_sample_create())
+    audit_service.record_decision(entry.id, AuditDecision.APPROVED, reviewer="alice")
+    audit_service.record_decision(entry.id, AuditDecision.REJECTED, reviewer="bob")
+    final = audit_service.record_decision(entry.id, AuditDecision.APPROVED, reviewer="carol")
+
+    assert final.decision == AuditDecision.APPROVED
+    assert final.reviewer == "carol"
+    assert [r.reviewer for r in final.revision_history] == ["alice", "bob"]
+
+
+def test_first_decision_from_pending_does_not_create_a_history_entry():
+    entry = audit_service.create_entry(_sample_create())
+    decided = audit_service.record_decision(entry.id, AuditDecision.APPROVED, reviewer="alice")
+    assert decided.revision_history == []
