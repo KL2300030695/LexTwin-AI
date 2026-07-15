@@ -679,7 +679,7 @@ cd LexTwin-AI
 cd backend
 
 # Create and activate a virtual environment
-python -m venv venv
+python -m venv .venv
 # Windows (PowerShell / Git Bash):
 source venv/Scripts/activate
 # macOS/Linux:
