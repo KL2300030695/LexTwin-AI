@@ -693,6 +693,13 @@ source venv/Scripts/activate
 # Install dependencies
 pip install -r requirements.txt
 
+# If you are using Python 3.13 and the pinned PyMuPDF version fails to build, install a wheel-backed version first and then rerun the requirements install with the venv Python:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install PyMuPDF==1.26.3
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
 # Configure environment
 cp .env.example .env
 # then edit .env — see Environment Variables below
