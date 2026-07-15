@@ -8,6 +8,7 @@ a judgment call isn't actually required, LLM only where one genuinely is.
 from __future__ import annotations
 
 import re
+import threading
 
 from app.models.chat import ChatCitation, ChatMessage, ChatResponse
 from app.models.schema import Clause
@@ -27,17 +28,25 @@ _INLINE_REF_MARKER_RE = re.compile(r"\s?\[\d+\]")
 # In-process cache only -- matches the singleton pattern already used for the
 # AI provider clients. Rebuilt if the document set's clause count changes
 # (e.g. a document was re-uploaded), not persisted across restarts.
+#
+# FastAPI runs sync endpoints in a thread pool: without a lock, two
+# concurrent chat requests for the same (or first-ever) doc pair could both
+# see "not cached" and both call build_clause_index() at once, which itself
+# races on the embedder's model singleton (see app/rag/embedder.py) -- the
+# same class of bug already found and fixed there and in local_llm_client.py.
 _index_cache: dict[tuple[str, ...], ClauseIndex] = {}
+_index_cache_lock = threading.Lock()
 
 
 def _get_or_build_index(doc_ids: list[str], clauses: list[Clause]) -> ClauseIndex:
     key = tuple(sorted(doc_ids))
-    cached = _index_cache.get(key)
-    if cached is not None and len(cached.clauses) == len(clauses):
-        return cached
-    index = build_clause_index(clauses)
-    _index_cache[key] = index
-    return index
+    with _index_cache_lock:
+        cached = _index_cache.get(key)
+        if cached is not None and len(cached.clauses) == len(clauses):
+            return cached
+        index = build_clause_index(clauses)
+        _index_cache[key] = index
+        return index
 
 
 def _build_context_block(retrieved: list[tuple[Clause, float]]) -> str:
