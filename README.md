@@ -868,7 +868,15 @@ npm run preview    # local preview of the production build
 
 ### Docker mode
 
-**Not yet configured.** No `Dockerfile` or `docker-compose.yml` currently ships in this repository — see [Deployment](#-deployment) for a recommended approach and [Roadmap](#-future-enhancements--roadmap) for containerization as a planned enhancement.
+```bash
+docker compose up --build
+```
+
+Then open **http://localhost:5173**. This runs two containers — `backend` (FastAPI + the local LLM, port 8000) and `frontend` (an nginx-served static build that reverse-proxies `/api/*` to `backend`, port 5173→80) — with `USE_FIREBASE=false` (local-disk storage) so it works with zero external setup. Two named volumes persist state across restarts: `backend_local_data` (uploaded documents) and `hf_cache` (the downloaded GGUF + embedding models, so you don't redownload several GB every time you restart the container).
+
+> **Memory note:** Docker Desktop's default memory limit (often 2-4GB on Windows/Mac) is not enough for this project's local models (~3.8GB LLM + ~1.3GB embedding model resident at once — see [Performance](#-performance)). Increase it in Docker Desktop's settings (Resources → Memory) to at least 8GB before running this.
+>
+> **Not yet verified end-to-end in this environment** — the Dockerfiles and compose config were written and reviewed for correctness (multi-stage builds, the same nginx same-origin-proxy pattern the dev server's `vite.config.ts` proxy uses, a single backend worker so the local model isn't loaded multiple times) but not build-tested here, since Docker Desktop's daemon wasn't running at the time. If you hit a build error, please open an issue with the exact error — this is the first Docker setup for this project.
 
 ---
 
@@ -1489,7 +1497,7 @@ The backend is a standard FastAPI app served by `uvicorn`, which deploys cleanly
 
 ### Docker
 
-**Not yet implemented.** No `Dockerfile` currently exists for either service. A minimal backend `Dockerfile` would be a standard `python:3.10-slim` base, `pip install -r requirements.txt`, `CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]`; a minimal frontend `Dockerfile` would build the Vite bundle in a `node` stage and serve it from `nginx`. Containerizing both, plus a `docker-compose.yml` for local orchestration, is tracked in the [Roadmap](#-future-enhancements--roadmap).
+`docker compose up --build` from the repo root runs both services — see [Running the Project → Docker mode](#docker-mode) for the full walkthrough, volumes, and memory sizing note. `backend/Dockerfile` is a multi-stage build (a builder stage with a C++ toolchain for `llama-cpp-python`, copied into a slim final image with no compiler); `frontend/Dockerfile` builds the Vite bundle in a `node` stage and serves it from `nginx`, which also reverse-proxies `/api/*` to the backend container so the browser only ever talks to one origin. For a cloud deployment (rather than local Docker), the platform-specific guidance above (Vercel/Render/etc.) still applies — these Dockerfiles are aimed at "clone and run," not a specific hosting platform.
 
 ### Firebase
 
@@ -1517,7 +1525,7 @@ Ideas below are genuinely **not built yet** — this section exists precisely so
 14. **Rate limiting** on the API layer, independent of the Anthropic SDK's own retry/backoff.
 15. **Response caching** for repeated graph/completeness/contradiction analyses of an unchanged document pair.
 16. **Async/streaming AI provider calls** for lower perceived latency on redline generation.
-17. **Dockerfiles + `docker-compose.yml`** for one-command local orchestration of both services.
+17. ~~Dockerfiles + `docker-compose.yml`~~ — **done**, see [Running the Project → Docker mode](#docker-mode). Written and reviewed, but not build-tested in this environment (Docker Desktop's daemon wasn't running when it was added) — treat it as unverified until confirmed on a real machine.
 18. **CI/CD pipeline** (GitHub Actions) running the pytest suite and frontend build on every PR.
 19. **Automated deployment** to Render/Vercel on merge to `main`.
 20. **PDF/Word export** of a redline suggestion, applied back into a downloadable revised document.
