@@ -196,7 +196,7 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Benefits.** Interactive, zoomable, clickable — clicking a node opens the full clause text with its section-hierarchy breadcrumb; the graph is the single visual anchor for every other feature's findings.
 
-**Possible improvements.** Currently recomputed synchronously on request (not a live, streaming "digital twin" that updates as you type — see [Roadmap](#-future-enhancements--roadmap)); no persisted graph diffing across re-uploads of an amended contract version yet.
+**Possible improvements.** The full cross-document graph (both MSA and SOW together) is still recomputed synchronously when a workspace is opened, not continuously pushed — see [Roadmap](#-future-enhancements--roadmap). (Single-document circular-reference detection specifically *is* real-time now, at upload — see [feature 5](#5-circular-reference--override-conflict-detection).) No persisted graph diffing across re-uploads of an amended contract version yet.
 
 ---
 
@@ -215,6 +215,8 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 **Technologies used.** `networkx`.
 
 **Benefits.** Fully deterministic and explainable — no LLM is asked to "notice" a cycle; the graph algorithm proves it exists.
+
+**Real-time detection at upload, not just at workspace analysis.** A circular reference between two clauses in the *same* document (like the seeded MSA §6.3 ↔ §9.1 loop in the sample contract) doesn't need a second document or a trip to the Dependency Graph tab to be caught — the Upload page runs this same check the instant a single document finishes parsing, and surfaces it immediately, inline, in the upload slot itself (*"Circular reference detected — 1 loop found: 6.3 ↔ 9.1, 9.1 ↔ 6.3"*), with a persistent warning chip on that document afterward. Cross-document cycles (spanning both the MSA and the SOW) still require both documents and are caught once a pair is analyzed in the workspace — see [feature 4](#4-clause-dependency-graph-the-digital-twin).
 
 **Possible improvements.** Currently only section-level references feed the cycle detector; obligation-level circular dependencies (e.g. "payment triggers delivery triggers payment") aren't modeled as graph edges yet.
 
@@ -605,7 +607,7 @@ LexTwin AI/
 │   │   ├── build_contractnli_playbook.py
 │   │   └── generate_samples.py       #   Generates the synthetic sample MSA/SOW PDFs
 │   │
-│   ├── tests/                        # pytest suite (170 tests)
+│   ├── tests/                        # pytest suite (206 tests)
 │   ├── requirements.txt
 │   ├── pytest.ini
 │   └── .env.example
@@ -929,7 +931,7 @@ curl -X POST http://127.0.0.1:8000/api/documents/upload \
 
 ### `POST /graph/analyze`
 
-**Purpose.** Build the clause dependency graph for a set of documents.
+**Purpose.** Build the clause dependency graph for a set of documents. `doc_ids` can be a single document — the Upload page calls this with just the one just-uploaded document immediately after parsing, as the real-time single-document circular-reference check (see [feature 5](#5-circular-reference--override-conflict-detection)); the workspace calls it again with both MSA and SOW for the full cross-document graph.
 
 **Request:**
 
@@ -1339,7 +1341,7 @@ This doesn't mean multi-agent orchestration has no place here — a genuinely op
 - **Relationships & dependencies.** An edge `A → B` means "clause A's meaning depends on / is qualified by clause B." This is the exact relationship a human reviewer mentally builds while cross-checking a contract pair — made explicit and queryable.
 - **Traversal.** Powered by `networkx.DiGraph`; cycle detection via `nx.simple_cycles()`. Cross-document edges are resolved doc-set-aware (see [feature 4](#4-clause-dependency-graph-the-digital-twin)).
 - **Visualization.** Rendered client-side with **React Flow** — pannable, zoomable, clickable nodes that open the full clause text with its breadcrumb; edges are color/style-differentiated by `kind`.
-- **Graph updates.** Recomputed synchronously via `POST /api/graph/analyze` whenever a workspace is opened or documents change. Not a live/streaming twin that updates as a document is edited in real time — see [Roadmap](#-future-enhancements--roadmap) for what a truly live twin would require.
+- **Graph updates.** The full cross-document graph is recomputed synchronously via `POST /api/graph/analyze` whenever a workspace is opened. There's no in-app clause editor in this version of the app (contracts are uploaded, not typed into), so "live as you type" doesn't map onto the current editing model — but the single-document case *is* genuinely real-time: `POST /api/graph/analyze` is also called automatically the instant one document finishes uploading, so a circular reference within that one document is caught and surfaced immediately, before a pair is even selected (see [feature 5](#5-circular-reference--override-conflict-detection)). What's still on-demand rather than continuously pushed is the *cross-document* graph specifically, since that needs both documents present.
 
 ---
 
@@ -1416,7 +1418,7 @@ See [Roadmap](#-future-enhancements--roadmap) for authentication, authorization,
 | **Caching** | The multi-source reference library (`app/playbook/load_playbooks()`) is loaded once and memoized in-process (`functools.lru_cache`) — no repeated disk reads across requests. No response-level HTTP caching yet. |
 | **Async I/O** | The upload endpoint is `async def`; most other endpoints are synchronous FastAPI handlers (appropriate given they're CPU-bound regex/graph work, not I/O-bound). |
 | **Streaming** | Not implemented — AI provider responses are awaited in full before returning, appropriate for structured-output calls that must be schema-validated as a whole rather than rendered token-by-token. |
-| **Test suite runtime** | 170 tests total. The default fast suite (166 tests, dataset-heavy/LLM tests excluded via `pytest.ini` markers) runs in ~7 seconds; the full suite including slow real-contract parsing tests runs in ~70 seconds. |
+| **Test suite runtime** | 206 tests total. The default suite (195 tests, `slow`/`llm`-marked tests excluded via `pytest.ini`) runs in ~50 seconds — most of that is import overhead from `sentence_transformers` (Chat with Contract), not the tests themselves; the full suite including slow real-contract-parsing and real-embedding-model tests runs in ~2.5 minutes. |
 | **Graph rendering** | React Flow handles moderate node/edge counts (tens to low hundreds) smoothly client-side; not yet load-tested against very large multi-hundred-clause contract sets. |
 
 See [Roadmap](#-future-enhancements--roadmap) for planned caching, async LLM calls, and streaming improvements.
@@ -1472,7 +1474,7 @@ Ideas below are genuinely **not built yet** — this section exists precisely so
 19. **Automated deployment** to Render/Vercel on merge to `main`.
 20. **PDF/Word export** of a redline suggestion, applied back into a downloadable revised document.
 21. **CSV/spreadsheet export** of the same risk report data, for teams that want to pivot/filter findings outside the app (the PDF version is already built — see [feature 14](#14-downloadable-pdf-risk-report)).
-22. **Live, streaming dependency graph** that updates incrementally as a document is re-uploaded/amended, rather than fully recomputing on each request.
+22. ~~Live, streaming dependency graph~~ — **partially done**: single-document circular-reference detection now runs automatically at upload time (see [feature 5](#5-circular-reference--override-conflict-detection)). Still not done: *incremental* updates when a document is re-uploaded/amended (today a re-upload is a full reparse + full recheck from scratch, not a diff against the previous version), and the full cross-document graph is still computed on-demand rather than continuously.
 23. **Absolute-date obligation deadlines** (e.g. *"no later than March 1, 2027"*), not just relative day counts.
 24. **Improved responsible-party resolution** in obligation extraction, moving beyond the current "preceding noun phrase" heuristic toward actual party-name resolution against the contract's defined-terms section.
 25. **Lettered/roman-numeral sub-clause hierarchy** (`(a)`, `(i)`) promoted to its own graph level, not flattened into the parent clause's text.

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { listDocuments, uploadDocument } from '../api/client'
+import { analyzeGraph, listDocuments, uploadDocument } from '../api/client'
 import type { DocType, ParsedDocument } from '../types/document'
 
 const DOC_TYPE_STYLE: Record<DocType, { tint: string; text: string; border: string; label: string }> = {
@@ -56,16 +56,52 @@ function GovernsConnector() {
   )
 }
 
-function UploadSlot({ docType, onUploaded }: { docType: DocType; onUploaded: (d: ParsedDocument) => void }) {
+interface CircularWarning {
+  count: number
+  detail: string
+}
+
+function UploadSlot({
+  docType,
+  onUploaded,
+}: {
+  docType: DocType
+  onUploaded: (d: ParsedDocument, circularCount: number) => void
+}) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [circularWarning, setCircularWarning] = useState<CircularWarning | null>(null)
 
   async function handleFile(file: File) {
     setBusy(true)
     setError(null)
+    setCircularWarning(null)
     try {
       const doc = await uploadDocument(file, docType)
-      onUploaded(doc)
+
+      // Real-time drafting-loop check: a circular reference between two
+      // clauses in the SAME document doesn't need a second document or a
+      // workspace visit to be detectable -- it's caught the moment this one
+      // document is parsed, surfaced right here rather than buried in a
+      // later tab. (Cross-document cycles still need both MSA and SOW, and
+      // are caught once a pair is analyzed in the workspace.)
+      let circularCount = 0
+      try {
+        const graph = await analyzeGraph([doc.doc_id])
+        circularCount = graph.circular_references.length
+        if (circularCount > 0) {
+          const first = graph.circular_references[0]
+          const detail = first.edges
+            .map((e) => `${e.source.split('::')[1] ?? e.source} ↔ ${e.target.split('::')[1] ?? e.target}`)
+            .join(', ')
+          setCircularWarning({ count: circularCount, detail })
+        }
+      } catch {
+        // Best-effort -- if this check fails, full workspace analysis will
+        // still catch it later; don't block the upload on it.
+      }
+
+      onUploaded(doc, circularCount)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Upload failed'
       setError(msg)
@@ -96,6 +132,14 @@ function UploadSlot({ docType, onUploaded }: { docType: DocType; onUploaded: (d:
         <p className="mt-3 font-mono text-[11px] uppercase tracking-wide text-slate-body">PDF &middot; DOCX</p>
       </div>
       {error && <p className="mt-3 text-sm text-redline">{error}</p>}
+      {circularWarning && (
+        <div className="mt-3 rounded-md border border-redline/30 bg-redline-tint px-3.5 py-3 text-sm text-redline">
+          <p className="font-semibold">
+            Circular reference detected — {circularWarning.count} loop{circularWarning.count === 1 ? '' : 's'} found
+          </p>
+          <p className="mt-1 font-mono text-xs">{circularWarning.detail}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -165,6 +209,7 @@ function PairAnalysisPicker({ documents }: { documents: ParsedDocument[] }) {
 export default function UploadPage() {
   const [documents, setDocuments] = useState<ParsedDocument[]>([])
   const [loading, setLoading] = useState(true)
+  const [circularCounts, setCircularCounts] = useState<Map<string, number>>(new Map())
 
   useEffect(() => {
     listDocuments()
@@ -172,8 +217,11 @@ export default function UploadPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  function handleUploaded(doc: ParsedDocument) {
+  function handleUploaded(doc: ParsedDocument, circularCount: number) {
     setDocuments((prev) => [doc, ...prev.filter((d) => d.doc_id !== doc.doc_id)])
+    if (circularCount > 0) {
+      setCircularCounts((prev) => new Map(prev).set(doc.doc_id, circularCount))
+    }
   }
 
   return (
@@ -239,6 +287,11 @@ export default function UploadPage() {
                       <MetaPill>{doc.clauses.length} clauses</MetaPill>
                       <MetaPill>{doc.tables.length} tables</MetaPill>
                       <MetaPill>{doc.page_count} pages</MetaPill>
+                      {circularCounts.has(doc.doc_id) && (
+                        <span className="inline-flex items-center rounded-sm border border-redline/30 bg-redline-tint px-2 py-0.5 font-mono text-[11px] font-semibold text-redline">
+                          &#9888; circular reference
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
