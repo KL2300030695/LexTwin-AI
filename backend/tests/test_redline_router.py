@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.schema import Clause, DocType, ParsedDocument
-from app.services.claude_client import FallbackSuggestion
+from app.services.ai_schemas import FallbackSuggestion
 
 client = TestClient(app)
 

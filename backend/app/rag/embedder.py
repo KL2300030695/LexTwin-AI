@@ -1,10 +1,10 @@
 """Local embedding model for the RAG chat feature (Chat with Contract).
 
 Deliberately not routed through app/services/ai_client.py: embedding is a
-retrieval-infrastructure concern, not a judgment call, and Anthropic doesn't
-offer an embeddings endpoint at all -- so this always uses a local model
-(BAAI/bge-large-en-v1.5 via sentence-transformers) regardless of AI_PROVIDER.
-Runs entirely on-machine: no API key, no per-call cost, no rate limits.
+retrieval-infrastructure concern, not a judgment call, and uses a different
+local model (BAAI/bge-large-en-v1.5 via sentence-transformers) than the
+judgment/generation model in app/services/local_llm_client.py. Both run
+entirely on-machine: no API key, no per-call cost, no rate limits.
 The model is downloaded once (~1.3GB) and cached by sentence-transformers/
 huggingface_hub in the user's local cache directory on first use.
 """

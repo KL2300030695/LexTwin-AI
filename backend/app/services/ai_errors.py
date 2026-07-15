@@ -1,10 +1,9 @@
-"""Shared error type for both AI providers (Claude, Gemini).
+"""Shared error type for the local LLM client.
 
-ClaudeClientError and GeminiClientError both subclass this, so callers that
-only care "did the configured AI provider fail" (app/services/contradiction_service.py,
-app/services/redline_service.py) can catch one type regardless of which
-provider is active, while code that cares about a specific provider can still
-catch the narrower subclass.
+LocalLLMClientError subclasses this, so callers that only care "did the AI
+call fail" (app/services/contradiction_service.py, redline_service.py,
+chat_service.py) can catch this one type without depending on
+local_llm_client.py directly.
 """
 from __future__ import annotations
 

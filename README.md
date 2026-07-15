@@ -11,7 +11,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](#)
 [![React](https://img.shields.io/badge/react-19-61DAFB?logo=react&logoColor=black)](#)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](#)
-[![AI](https://img.shields.io/badge/AI-Claude%20%7C%20Gemini-D97757?logo=anthropic&logoColor=white)](#)
+[![AI](https://img.shields.io/badge/AI-100%25%20Local%20(Qwen2.5%2C%20no%20API%20key)-5A67D8?logo=meta&logoColor=white)](#)
 [![Firebase](https://img.shields.io/badge/Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)](#)
 [![Stars](https://img.shields.io/github/stars/KL2300030695/LexTwin-AI?style=social)](https://github.com/KL2300030695/LexTwin-AI/stargazers)
 
@@ -94,7 +94,7 @@ Neither approach models the actual *graph* of dependencies a real contract set e
 LexTwin AI treats an MSA/SOW pair as a **structured, explainable graph problem first, and an LLM judgment problem second — only where a judgment is genuinely required.**
 
 - **Parsing, hierarchy, cross-references, dependency graphs, cycle detection, obligation extraction, and the missing-reference guardrail are 100% deterministic** (regex + `networkx`), not LLM calls. Every edge in the dependency graph traces back to an exact character span in the source text. Every result is reproducible and unit-tested.
-- **The configured AI provider (Claude by default, or Gemini) is invoked for exactly two narrow, genuinely judgment-shaped tasks**: (1) deciding whether a topic-aligned MSA clause and SOW clause materially contradict each other, and (2) drafting fallback redline language for a clause a reviewer has flagged. Both calls use structured output (a fixed Pydantic schema), so the model can't return anything the app doesn't already know how to render — and both providers are asked the *exact same prompt* against the *exact same schema* (`app/services/ai_schemas.py`), so switching provider never changes what's being asked.
+- **A local LLM (Qwen2.5-7B-Instruct, via `llama-cpp-python`) is invoked for exactly two narrow, genuinely judgment-shaped tasks**: (1) deciding whether a topic-aligned MSA clause and SOW clause materially contradict each other, and (2) drafting fallback redline language for a clause a reviewer has flagged. Both calls use grammar-constrained structured output (a fixed Pydantic schema), so the model can't return anything the app doesn't already know how to render. **No API key, no external network call at inference time, and no per-call cost** — the model runs entirely on the machine hosting the backend.
 - **A clause is never handed to the LLM for contradiction analysis if a document it depends on is missing from the upload set.** Instead of guessing, the system explicitly reports "cannot evaluate — missing reference," which is the closest deterministic analogue to a hallucination guard: it prevents the model from being asked to reason over content it was never given, by construction, before the API call is ever made.
 - The result is a **Contract Digital Twin**: an interactive, explorable graph of every clause and its dependencies, layered with deterministic risk flags (circular references, override conflicts, missing exhibits) and targeted AI risk flags (cross-document contradictions), all traceable back to source text and page numbers.
 
@@ -246,19 +246,19 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** The headline AI feature: automatically find places where an SOW clause materially conflicts with the MSA clause that's supposed to govern it — different payment terms, different liability caps, different SLA thresholds for the same metric.
 
-**How it works.** Clauses from the MSA and SOW are first aligned by topic (see [feature 8](#8-configurable-legal-playbook--topic-alignment)) using deterministic regex classification against clause headings — **not** an LLM call. For each topic where both documents have a matching clause, and neither clause is blocked by the [missing-reference guardrail](#6-missing-reference-refusal-guardrail), the pair is sent to the configured AI provider (`app/services/ai_client.py` routes to `claude_client.py` or `gemini_client.py` based on `AI_PROVIDER`) with a tightly scoped system prompt instructing it to judge *material* conflicts only (minor wording differences or a SOW adding detail without conflicting are explicitly **not** contradictions) and to return a structured `ContradictionJudgment` (`has_contradiction: bool`, `explanation: str`, `confidence: float`) — Claude via `client.messages.parse(..., output_format=ContradictionJudgment)`, Gemini via `response_schema=ContradictionJudgment` with `response_mime_type="application/json"`. Either way the SDK validates the response against the same Pydantic schema, so a malformed or off-topic model response simply can't reach the frontend.
+**How it works.** Clauses from the MSA and SOW are first aligned by topic (see [feature 8](#8-configurable-legal-playbook--topic-alignment)) using deterministic regex classification against clause headings — **not** an LLM call. For each topic where both documents have a matching clause, and neither clause is blocked by the [missing-reference guardrail](#6-missing-reference-refusal-guardrail), the pair is sent to the local model (`app/services/ai_client.py` re-exports `local_llm_client.py`, which runs **Qwen2.5-7B-Instruct** entirely on-machine via `llama-cpp-python`) with a tightly scoped system prompt instructing it to judge *material* conflicts only (minor wording differences or a SOW adding detail without conflicting are explicitly **not** contradictions) and to return a structured `ContradictionJudgment` (`has_contradiction: bool`, `explanation: str`, `confidence: float`) via `create_chat_completion(..., response_format={"type": "json_object", "schema": ContradictionJudgment.model_json_schema()})` — grammar-constrained (GBNF) decoding that forces the raw output to be valid JSON matching the schema's required fields and types before it's even returned. Pydantic then validates it a second time on the way in, with a defensive `field_validator` that normalizes `confidence` in case the model emits a 0–100 percentage instead of the requested 0.0–1.0 fraction — grammar constraints enforce JSON *shape*, not numeric-range semantics, so this check matters in practice (verified directly during development).
 
 **Input.** `msa_doc_id`, `sow_doc_id`.
 
-**Processing.** Topic alignment → missing-reference gating → per-pair AI provider call with structured output → status classification (`analyzed` / `cannot_evaluate` / `error`).
+**Processing.** Topic alignment → missing-reference gating → per-pair local model call with grammar-constrained structured output → status classification (`analyzed` / `cannot_evaluate` / `error`).
 
 **Output.** A `ContradictionAnalysis`: `results[]` (one `ContradictionResult` per aligned topic, with `status`, `has_contradiction`, `explanation`, `confidence`), `contradictions_found` count.
 
-**Technologies used.** Anthropic Python SDK (`claude-sonnet-4-6` by default) or Google Gen AI SDK (`gemini-flash-lite-latest` by default), selected at runtime by `AI_PROVIDER` — see [Environment Variables](#-environment-variables).
+**Technologies used.** `llama-cpp-python` running **Qwen2.5-7B-Instruct** (GGUF, Q3_K_M quantization) — see [Environment Variables](#-environment-variables) for the local-model config and why the 7B model, not the smaller/faster 3B, is the default.
 
-**Benefits.** Scoped, auditable AI usage: one AI call per aligned topic (not per-token document chat), each with a fixed, inspectable prompt and a schema-constrained response — every judgment is loggable to the [audit trail](#13-human-in-the-loop-audit-trail) with its exact rationale. Both providers are asked identically, so switching `AI_PROVIDER` never changes the question, only who answers it.
+**Benefits.** Scoped, auditable AI usage: one local-inference call per aligned topic (not per-token document chat), each with a fixed, inspectable prompt and a schema-constrained response — every judgment is loggable to the [audit trail](#13-human-in-the-loop-audit-trail) with its exact rationale. Because inference is local, there's no per-call cost, no API key to leak, and no rate limit — the only cost is CPU time on the host machine.
 
-**Possible improvements.** Currently only compares an MSA against a *single* SOW at a time; doesn't yet aggregate contradictions across many SOWs under the same MSA in one pass; a failed AI call for one topic degrades gracefully to `status: "error"` for that topic only, but doesn't currently retry with backoff beyond what each SDK already does.
+**Possible improvements.** Currently only compares an MSA against a *single* SOW at a time; doesn't yet aggregate contradictions across many SOWs under the same MSA in one pass; a failed local-model call for one topic degrades gracefully to `status: "error"` for that topic only. CPU-only inference on a 7B model is measurably slower than a hosted API call — see [Performance](#-performance).
 
 ---
 
@@ -333,15 +333,15 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** For any flagged clause, draft a minimal, ready-to-review replacement that resolves the stated risk — not a full rewrite, the smallest edit that fixes the problem.
 
-**How it works.** Given a `doc_id`/`clause_id` and the risk reason it was flagged for (optionally with a reference clause to align with, e.g. the MSA clause a contradicting SOW clause should match), the configured AI provider is prompted to preserve the original wording and structure as much as possible and produce a `FallbackSuggestion` (`suggested_text`, `rationale`) via the same structured-output pattern as contradiction detection. The original and suggested text are then fed through a **word-level diff** (`diff-match-patch`, using a character-encoding trick that maps whole words to Private-Use-Area Unicode characters before diffing, then maps back) to produce both a structured `DiffOp[]` and a ready-to-render `diff_markdown` string.
+**How it works.** Given a `doc_id`/`clause_id` and the risk reason it was flagged for (optionally with a reference clause to align with, e.g. the MSA clause a contradicting SOW clause should match), the local model is prompted to preserve the original wording and structure as much as possible and produce a `FallbackSuggestion` (`suggested_text`, `rationale`) via the same grammar-constrained structured-output pattern as contradiction detection. The original and suggested text are then fed through a **word-level diff** (`diff-match-patch`, using a character-encoding trick that maps whole words to Private-Use-Area Unicode characters before diffing, then maps back) to produce both a structured `DiffOp[]` and a ready-to-render `diff_markdown` string.
 
 **Input.** `doc_id`, `clause_id`, `risk_reason`, optional `reference_doc_id`/`reference_clause_id`.
 
-**Processing.** AI provider structured-output call → word-level diff computation → markdown rendering.
+**Processing.** Local model structured-output call → word-level diff computation → markdown rendering.
 
 **Output.** A `RedlineSuggestion`: `original_text`, `suggested_text`, `rationale`, `diff[]`, `diff_markdown`.
 
-**Technologies used.** Anthropic SDK or Google Gen AI SDK (structured output, whichever `AI_PROVIDER` selects), `diff-match-patch`.
+**Technologies used.** `llama-cpp-python` (Qwen2.5-7B-Instruct, same local model as contradiction detection), `diff-match-patch`.
 
 **Benefits.** Word-level (not line-level) diffing means a reviewer sees precisely which phrase changed, not a wall of red/green paragraph replacement — dramatically faster to review.
 
@@ -415,17 +415,17 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** Free-form Q&A over an MSA/SOW pair — ask anything, get a grounded answer with clickable citations back to the exact source clause(s), instead of manually reading through both documents to find the answer yourself.
 
-**How it works.** This is the one feature in the app where the relevant clauses genuinely can't be known in advance (any question is fair game), so it's the one place LexTwin AI uses **real embedding-based retrieval**: every analyzable clause in the document pair is embedded with **BAAI/bge-large-en-v1.5** (via `sentence-transformers`) and indexed in an in-process **FAISS** vector index (cosine similarity via L2-normalized inner product), cached per document pair. A question is embedded with BGE's documented query-instruction prefix, the top-8 most similar clauses are retrieved, and a numbered context block is built from them. That context — plus the running conversation history — is sent to the configured AI provider (Claude or Gemini, via the same `app/services/ai_client.py` dispatcher every other AI feature uses) with instructions to answer *using only the provided clauses* and to report which ones it relied on via a structured `cited_refs` field, not inline bracket markers in the prose. The backend maps those reference numbers back to real `clause_id`s before returning them, and a defensive regex strips any stray `[N]` markers a model includes anyway.
+**How it works.** This is the one feature in the app where the relevant clauses genuinely can't be known in advance (any question is fair game), so it's the one place LexTwin AI uses **real embedding-based retrieval**: every analyzable clause in the document pair is embedded with **BAAI/bge-large-en-v1.5** (via `sentence-transformers`) and indexed in an in-process **FAISS** vector index (cosine similarity via L2-normalized inner product), cached per document pair. A question is embedded with BGE's documented query-instruction prefix, the top-8 most similar clauses are retrieved, and a numbered context block is built from them. That context — plus the running conversation history — is sent to the local model (the same Qwen2.5-7B-Instruct model every other AI feature in the app uses, via `app/services/ai_client.py`) with instructions to answer *using only the provided clauses* and to report which ones it relied on via a structured `cited_refs` field, not inline bracket markers in the prose. The backend maps those reference numbers back to real `clause_id`s before returning them, and a defensive regex strips any stray `[N]` markers a model includes anyway.
 
 **Input.** `doc_ids[]`, `question`, and `history[]` (prior turns, resent by the frontend each request — the backend itself is stateless per call).
 
-**Processing.** Embed clauses (once, cached) → embed question → FAISS top-k search → numbered context assembly → AI provider structured-output call → citation mapping → inline-marker cleanup.
+**Processing.** Embed clauses (once, cached) → embed question → FAISS top-k search → numbered context assembly → local model structured-output call → citation mapping → inline-marker cleanup.
 
 **Output.** A `ChatResponse`: `answer` (clean prose, no citation markers) and `citations[]` (each a real `clause_id` the frontend can look up and display via the same `ClauseCard` used everywhere else in the app).
 
-**Technologies used.** `sentence-transformers` + `BAAI/bge-large-en-v1.5` (local, no API key, no per-call cost — routed independently of `AI_PROVIDER` since embedding is retrieval infrastructure, not a judgment call, and Anthropic has no embeddings endpoint), `faiss-cpu` (`IndexFlatIP`), then Claude or Gemini for answer synthesis only.
+**Technologies used.** `sentence-transformers` + `BAAI/bge-large-en-v1.5` for retrieval, `faiss-cpu` (`IndexFlatIP`) for the vector index, then Qwen2.5-7B-Instruct (`llama-cpp-python`) for answer synthesis — all four run **entirely locally**; this is a genuinely separate local model from the embedding one, loaded and cached independently (see `app/services/local_llm_client.py` vs. `app/rag/embedder.py`).
 
-**Benefits.** Every answer is auditable back to a specific clause, not a black-box summary; retrieval never touches the AI provider, so browsing/asking cheap questions costs nothing beyond the one synthesis call; reuses the exact same provider dispatcher, structured-output pattern, and `ClauseCard` citation UI already established elsewhere in the app rather than inventing a parallel system.
+**Benefits.** Every answer is auditable back to a specific clause, not a black-box summary; every step in the pipeline — retrieval and synthesis alike — runs on-machine with no API key and no per-call cost; reuses the exact same structured-output pattern and `ClauseCard` citation UI already established elsewhere in the app rather than inventing a parallel system.
 
 **Possible improvements.** Dense single-vector retrieval measurably struggles with *compound* questions (verified directly — see [Retrieval & Context Handling](#-retrieval--context-handling)); query decomposition or hybrid keyword+semantic search would address this. No persistent index across process restarts (in-memory cache only). No multi-turn topic tracking beyond resending raw history text.
 
@@ -477,8 +477,8 @@ flowchart TB
         DIFF["Word-level Diff\n(diff-match-patch)"]
     end
 
-    subgraph LLM["AI Provider (Claude or Gemini) — judgment only"]
-        DISP["ai_client.py\n(provider dispatcher)"]
+    subgraph LLM["Local LLM (Qwen2.5-7B, llama-cpp-python) — no API key, judgment only"]
+        DISP["ai_client.py\n(re-exports local_llm_client)"]
         CTR["Contradiction\nJudgment"]
         FALL["Fallback Redline\nDrafting"]
         DISP --> CTR
@@ -514,7 +514,7 @@ flowchart TB
     PBJSON --> R7
 ```
 
-**Key architectural principle:** everything in the *Deterministic Parsing* and *Deterministic Analysis* layers is regex/graph-algorithm code with zero LLM involvement, fully unit-tested and reproducible. The *AI Provider* box is deliberately small and isolated — `app/services/ai_client.py` is the only module the rest of the app imports from, and it dispatches to either `claude_client.py` or `gemini_client.py` based on `AI_PROVIDER`, both implementing the exact same two structured-output calls against the exact same prompts/schemas (`app/services/ai_schemas.py`), both gated by the deterministic completeness check upstream.
+**Key architectural principle:** everything in the *Deterministic Parsing* and *Deterministic Analysis* layers is regex/graph-algorithm code with zero LLM involvement, fully unit-tested and reproducible. The *Local LLM* box is deliberately small and isolated — `app/services/ai_client.py` is the only module the rest of the app imports from, and it's a thin re-export of `local_llm_client.py`, which runs **Qwen2.5-7B-Instruct** entirely on-machine via `llama-cpp-python` for the two structured-output calls (`app/services/ai_schemas.py`), both gated by the deterministic completeness check upstream. No API key exists anywhere in this system.
 
 ---
 
@@ -525,7 +525,7 @@ LexTwin AI/
 ├── backend/                          # FastAPI application
 │   ├── app/
 │   │   ├── main.py                   # FastAPI app, router registration, CORS, /api/health
-│   │   ├── config.py                 # Settings loaded from .env (Firebase, AI provider, upload limits)
+│   │   ├── config.py                 # Settings loaded from .env (Firebase, local LLM config, upload limits)
 │   │   ├── firebase.py               # Storage abstraction: Firestore + local-disk fallback
 │   │   │
 │   │   ├── models/                   # Pydantic schemas (shared request/response contracts)
@@ -584,11 +584,10 @@ LexTwin AI/
 │   │   │   ├── audit_service.py
 │   │   │   ├── report_service.py     #   Renders the PDF report (reportlab; pure formatting, no analysis)
 │   │   │   ├── chat_service.py       #   Chat with Contract orchestration (retrieval + answer synthesis)
-│   │   │   ├── ai_client.py          #   Provider dispatcher (routes to claude_client or gemini_client)
-│   │   │   ├── ai_schemas.py         #   Shared prompts + Pydantic schemas (provider-agnostic)
+│   │   │   ├── ai_client.py          #   Thin re-export of local_llm_client.py (single import point for the rest of the app)
+│   │   │   ├── ai_schemas.py         #   Shared prompts + Pydantic schemas
 │   │   │   ├── ai_errors.py          #   Shared AIClientError base exception
-│   │   │   ├── claude_client.py      #   Calls the Anthropic API (AI_PROVIDER=claude, the default)
-│   │   │   └── gemini_client.py      #   Calls the Google Gen AI API (AI_PROVIDER=gemini)
+│   │   │   └── local_llm_client.py   #   Runs Qwen2.5-7B-Instruct locally via llama-cpp-python -- no API key
 │   │   │
 │   │   └── routers/                  # FastAPI route definitions (thin — delegate to services)
 │   │       ├── documents.py
@@ -609,7 +608,7 @@ LexTwin AI/
 │   │   ├── build_contractnli_playbook.py
 │   │   └── generate_samples.py       #   Generates the synthetic sample MSA/SOW PDFs
 │   │
-│   ├── tests/                        # pytest suite (206 tests)
+│   ├── tests/                        # pytest suite (208 tests)
 │   ├── requirements.txt
 │   ├── pytest.ini
 │   └── .env.example
@@ -662,9 +661,11 @@ LexTwin AI/
 | Python | 3.10+ | 3.10.11 used in development |
 | Node.js | 18+ | 23.4.0 used in development |
 | npm | 9+ | ships with Node |
-| An AI provider API key (Claude **or** Gemini) | — | required only for contradiction detection, redlining & Chat with Contract's answer synthesis; everything else works without it |
+| **No AI provider API key needed, ever.** | — | Contradiction detection, redlining, and Chat with Contract's answer synthesis all run on a **local LLM** (Qwen2.5-7B-Instruct via `llama-cpp-python`) — no Claude/Gemini/OpenAI key, no account, no external network call at inference time. |
 | A Firebase project | optional | app runs fully functional against a local-disk store with `USE_FIREBASE=false` |
-| ~2GB free disk + network for first run | — | `sentence-transformers`/`faiss-cpu` (Chat with Contract) pull in PyTorch (CPU-only build) and download the `BAAI/bge-large-en-v1.5` embedding model (~1.3GB) on first use, then cache both locally — no API key needed for this part, it runs entirely on-machine |
+| A C++ build toolchain (CMake + MSVC/gcc/clang) | only if no prebuilt `llama-cpp-python` wheel matches your platform/Python version | `pip install` falls back to compiling from source in that case — took ~12 minutes on this project's dev machine. Prebuilt wheels exist for common platform/Python combinations, so most installs won't need this. |
+| **~8GB+ free RAM recommended** | — | The local LLM (Qwen2.5-7B, ~3.8GB GGUF file) plus the separate embedding model used by Chat with Contract (~1.3GB) are both loaded into the backend process's memory. On a memory-constrained machine (e.g. 16GB total RAM with an IDE and browser also open), running both models at once can be tight — see [Troubleshooting](#troubleshooting) if the backend process exits unexpectedly under load. |
+| ~6GB free disk + network for first run | — | The local LLM's GGUF file (~3.8GB) and the `BAAI/bge-large-en-v1.5` embedding model (~1.3GB, via `sentence-transformers`/`faiss-cpu`, which also pull in a CPU-only PyTorch build) are both downloaded once from Hugging Face Hub on first use and cached locally after that — entirely on-machine, no API key for either. |
 
 ### 1. Clone the repository
 
@@ -711,15 +712,13 @@ To use real Firestore instead:
 3. Project Settings → **Service Accounts** → *Generate new private key* → save the downloaded JSON as `backend/firebase-credentials.json` (already covered by `.gitignore` — never commit this file).
 4. In `backend/.env`, set `USE_FIREBASE=true`.
 
-### 5. Configure an AI provider (Claude or Gemini)
+### 5. Local LLM — nothing to configure, but read this once
 
-Cross-document contradiction detection and redline generation are powered by whichever provider `AI_PROVIDER` selects in `backend/.env` (default `claude`). Without a valid key for the selected provider, every other feature still works — this specific pair of features reports a graceful "AI contradiction detection unavailable" message rather than crashing.
+Cross-document contradiction detection, redline generation, and Chat with Contract's answer synthesis are all powered by a **local model** — **Qwen2.5-7B-Instruct**, run entirely on-machine via `llama-cpp-python`. There is no API key to obtain and no account to create; `backend/.env.example` ships working defaults (`LOCAL_LLM_REPO_ID`, `LOCAL_LLM_FILENAME`, `LOCAL_LLM_CONTEXT_SIZE`) that just work out of the box.
 
-**Option A — Claude (default):** get an API key from [console.anthropic.com](https://console.anthropic.com), set `ANTHROPIC_API_KEY` in `backend/.env`, leave `AI_PROVIDER=claude`.
+The first time any of those three features is actually used, `Llama.from_pretrained(...)` downloads the model's GGUF file (~3.8GB) from Hugging Face Hub and caches it locally — this happens once, not per-request, and every feature after that (and the pytest `slow` suite) reuses the cached file. Every other feature (upload, parsing, dependency graph, completeness check, obligation extraction) needs none of this and works immediately.
 
-**Option B — Gemini:** get an API key from [aistudio.google.com](https://aistudio.google.com/apikey), set `GEMINI_API_KEY` in `backend/.env`, and set `AI_PROVIDER=gemini`.
-
-Both providers are asked the identical prompt against the identical response schema (`app/services/ai_schemas.py`) — switching `AI_PROVIDER` changes nothing about the app's behavior beyond which vendor answers the question.
+**Why 7B, not a smaller/faster 3B model?** Verified directly during development: a Qwen2.5-3B-Instruct model missed a real, unambiguous MSA/SOW payment-term contradiction (45 days vs. 15 days), while the 7B model — even at a more aggressive Q3_K_M quantization — caught it correctly. A fast-but-wrong contradiction detector defeats the purpose of this tool, so the default trades a slower first response for a materially more reliable judgment. If you need faster inference and can tolerate lower judgment quality (e.g. on a lower-RAM machine), swap `LOCAL_LLM_REPO_ID`/`LOCAL_LLM_FILENAME` in `.env` to `Qwen/Qwen2.5-3B-Instruct-GGUF` / `qwen2.5-3b-instruct-q4_k_m.gguf` — see `app/services/local_llm_client.py`.
 
 ### 6. (Optional) Download reference datasets
 
@@ -778,7 +777,9 @@ Open **http://localhost:5173** — you should see the LexTwin AI upload page.
 | Symptom | Fix |
 |---|---|
 | `ModuleNotFoundError` on backend start | Confirm the virtual environment is activated and `pip install -r requirements.txt` completed without errors. |
-| `AI contradiction detection unavailable` in the UI | The API key for the active `AI_PROVIDER` is unset/invalid in `backend/.env` (`ANTHROPIC_API_KEY` for `claude`, `GEMINI_API_KEY` for `gemini`). Every other feature still works. |
+| `llama-cpp-python` fails to install / build error | No prebuilt wheel matched your platform+Python version, so pip tried to compile from source — install a C++ build toolchain (CMake + MSVC on Windows, or gcc/clang on Linux/macOS) and retry. Took ~12 minutes to build from source on this project's dev machine. |
+| First contradiction/redline/chat call is very slow, or logs show a Hugging Face download | Expected on the very first use — the ~3.8GB GGUF model is downloading and being cached. Subsequent calls reuse the cached file and skip the download. |
+| Backend process exits unexpectedly (no Python traceback, requests start failing with `502`) | **Fixed.** This was a genuine concurrency bug, not a resource limit: FastAPI runs sync endpoints in a thread pool, and the local model's underlying llama.cpp context isn't safe for concurrent generation calls from multiple threads at once (two concurrent contradiction/redline/chat requests reproducibly crashed the whole process). `app/services/local_llm_client.py` now serializes every model load and inference call through a `threading.Lock()` — see `test_local_llm_client.py` for the regression test. If you still see this after updating, it's worth filing as a new issue rather than assuming it's the same bug. |
 | `USE_FIREBASE=true but credentials file not found` | Either set `USE_FIREBASE=false` for local-disk mode, or place a valid service account JSON at `FIREBASE_CREDENTIALS_PATH`. |
 | CORS error in browser console | The backend only allows `http://localhost:5173` by default (`app/main.py`); if you changed the frontend port, update `allow_origins`. |
 | `[WinError 10013]` on `uvicorn --reload` (Windows) | A previous process is still holding port 8000 — find and stop it (`Get-NetTCPConnection -LocalPort 8000`) before restarting. |
@@ -801,20 +802,20 @@ USE_FIREBASE=false
 # USE_FIREBASE=true. Never commit this file — it is already gitignored.
 FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
 
-# ── AI provider ──────────────────────────────────────────────────────────
-# Which provider powers cross-document contradiction detection and redline
-# generation: "claude" (default) or "gemini". Every other feature (upload,
-# parsing, dependency graph, completeness check, obligation extraction)
-# works with neither key set.
-AI_PROVIDER=claude
-
-# Anthropic / Claude -- used when AI_PROVIDER=claude.
-ANTHROPIC_API_KEY=
-CLAUDE_MODEL=claude-sonnet-4-6
-
-# Google / Gemini -- used when AI_PROVIDER=gemini.
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-flash-lite-latest
+# ── Local LLM ─────────────────────────────────────────────────────────────
+# Powers contradiction detection, redline generation, and Chat with
+# Contract's answer synthesis. No API key, ever -- runs entirely on-machine
+# via llama-cpp-python. The GGUF file below is downloaded once from Hugging
+# Face Hub on first use (~3.8GB) and cached locally after that.
+#
+# Defaults to the 7B model, not the smaller/faster 3B: verified directly that
+# the 3B model missed a real, unambiguous payment-term contradiction that the
+# 7B model caught correctly. Swap to Qwen/Qwen2.5-3B-Instruct-GGUF +
+# qwen2.5-3b-instruct-q4_k_m.gguf for faster inference if you can tolerate
+# lower judgment quality -- see app/services/local_llm_client.py.
+LOCAL_LLM_REPO_ID=Qwen/Qwen2.5-7B-Instruct-GGUF
+LOCAL_LLM_FILENAME=qwen2.5-7b-instruct-q3_k_m.gguf
+LOCAL_LLM_CONTEXT_SIZE=4096
 
 # ── Upload limits ────────────────────────────────────────────────────────
 # Maximum accepted upload size, in megabytes.
@@ -825,12 +826,12 @@ MAX_UPLOAD_MB=25
 |---|---|---|---|
 | `USE_FIREBASE` | No | `false` | `true` to persist to real Firestore; `false` uses a local JSON-file store under `backend/local_data/`. |
 | `FIREBASE_CREDENTIALS_PATH` | Only if `USE_FIREBASE=true` | `./firebase-credentials.json` | Path to a Firebase Admin SDK service-account key. |
-| `AI_PROVIDER` | No | `claude` | `claude` or `gemini` -- selects which SDK `app/services/ai_client.py` dispatches to. |
-| `ANTHROPIC_API_KEY` | Only if `AI_PROVIDER=claude` | *(empty)* | Anthropic API key powering contradiction detection & redline generation. |
-| `CLAUDE_MODEL` | No | `claude-sonnet-4-6` | Claude model ID used for both structured-output calls. |
-| `GEMINI_API_KEY` | Only if `AI_PROVIDER=gemini` | *(empty)* | Google Gen AI API key, same two features. |
-| `GEMINI_MODEL` | No | `gemini-flash-lite-latest` | Gemini model ID used for both structured-output calls. On a free-tier key, the full "flash" tier can return `503` under load; `flash-lite` has separate quota and responded reliably in testing. |
+| `LOCAL_LLM_REPO_ID` | No | `Qwen/Qwen2.5-7B-Instruct-GGUF` | Hugging Face repo the GGUF model is downloaded from. |
+| `LOCAL_LLM_FILENAME` | No | `qwen2.5-7b-instruct-q3_k_m.gguf` | Exact GGUF filename within that repo. |
+| `LOCAL_LLM_CONTEXT_SIZE` | No | `4096` | Context window (tokens) the model is loaded with. |
 | `MAX_UPLOAD_MB` | No | `25` | Maximum accepted document upload size. |
+
+> No `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or any other AI provider credential exists anywhere in this project's configuration — there is nothing to leak and nothing to rotate.
 
 > **No frontend `.env` is required.** The frontend talks to the backend exclusively through a same-origin `/api` proxy configured in `vite.config.ts` — there is no Firebase Web SDK config and no API keys ever reach the browser (see [Security](#-security)).
 
@@ -1029,7 +1030,7 @@ curl -X POST http://127.0.0.1:8000/api/documents/upload \
 }
 ```
 
-`status` is one of `analyzed` (Claude produced a judgment), `cannot_evaluate` (blocked by the completeness guardrail), or `error` (the LLM call failed). **Status codes.** `200` · `404`.
+`status` is one of `analyzed` (the local model produced a judgment), `cannot_evaluate` (blocked by the completeness guardrail), or `error` (the local model call failed). **Status codes.** `200` · `404`.
 
 ---
 
@@ -1205,7 +1206,7 @@ Can be called more than once on the same entry — correcting a decision after a
 
 ### `POST /chat/ask`
 
-**Purpose.** Ask a free-form question about an MSA/SOW pair — see [feature 15](#15-chat-with-contract-rag). Embedding/retrieval is local; only answer synthesis calls the configured AI provider.
+**Purpose.** Ask a free-form question about an MSA/SOW pair — see [feature 15](#15-chat-with-contract-rag). Embedding/retrieval and answer synthesis are both local — no AI provider, no API key.
 
 **Request:**
 
@@ -1305,9 +1306,9 @@ flowchart LR
     D --> F["Completeness /\nRefusal Check"]
     E --> G["Topic Alignment"]
     F -.->|"gates"| H
-    G --> H["🤖 Claude:\nContradiction\nJudgment"]
+    G --> H["🤖 Local LLM:\nContradiction\nJudgment"]
     H --> I["Risk Flags\nDashboard"]
-    I --> J["🤖 Claude:\nRedline\nDrafting"]
+    I --> J["🤖 Local LLM:\nRedline\nDrafting"]
     J --> K["Word-level Diff"]
     K --> L["📋 Reviewable\nRedline"]
     D --> M["Obligation\nExtraction"]
@@ -1322,10 +1323,10 @@ flowchart LR
 | **Dependency graph + cycle detection** | Deterministic | `networkx` graph build, `simple_cycles()` for circular references and override conflicts. |
 | **Completeness / refusal check** | Deterministic | Doc-set-aware missing-reference gating — the guardrail that decides what's even eligible for AI analysis. |
 | **Topic alignment** | Deterministic | Regex classification of clause headings against the (user-editable) topic taxonomy. |
-| **Contradiction judgment** | **AI (Claude or Gemini)** | One structured-output call **per aligned, non-gated topic pair** — never per-document, never per-token streaming chat. |
+| **Contradiction judgment** | **AI (local Qwen2.5-7B, no API key)** | One structured-output call **per aligned, non-gated topic pair** — never per-document, never per-token streaming chat. |
 | **Obligation extraction** | Deterministic | Regex modal-verb + deadline extraction, no LLM involvement at all. |
-| **Redline drafting** | **AI (Claude or Gemini)** | One structured-output call per flagged clause a reviewer chooses to redline. |
-| **Word-level diff** | Deterministic | `diff-match-patch` word-boundary diffing between original and Claude's suggested text. |
+| **Redline drafting** | **AI (local Qwen2.5-7B, no API key)** | One structured-output call per flagged clause a reviewer chooses to redline. |
+| **Word-level diff** | Deterministic | `diff-match-patch` word-boundary diffing between original and the local model's suggested text. |
 
 There is **no chunking, embedding, or vector search step** in this pipeline (see [Retrieval & Context Handling](#-retrieval--context-handling) for why, and what would change that).
 
@@ -1339,9 +1340,9 @@ A natural question when building an "AI contract review" tool is whether to reac
 
 1. **Determinism where determinism is possible is strictly better than an agent for structural tasks.** Parsing, hierarchy detection, cross-reference resolution, cycle detection, and obligation extraction are not judgment calls — they're mechanically checkable facts about a document's structure. Routing these through an LLM agent (even a well-prompted one) would trade a reproducible, unit-testable, zero-cost-per-call system for a probabilistic one, for no accuracy benefit. Every one of these stages is covered by deterministic unit tests in `backend/tests/`.
 
-2. **Where judgment genuinely is required — contradiction detection and redline drafting — a single, tightly-scoped call with structured output is easier to audit than a multi-agent conversation.** Each AI call (Claude or Gemini) has one job, one fixed system prompt, and a Pydantic-validated response shape. There is no inter-agent message history to review, no risk of one agent's hallucination compounding into a second agent's reasoning, and no ambiguity about which "agent" produced a given claim — every finding in the [audit trail](#13-human-in-the-loop-audit-trail) traces to exactly one API call.
+2. **Where judgment genuinely is required — contradiction detection and redline drafting — a single, tightly-scoped call with structured output is easier to audit than a multi-agent conversation.** Each local-model call has one job, one fixed system prompt, and a Pydantic-validated response shape. There is no inter-agent message history to review, no risk of one agent's hallucination compounding into a second agent's reasoning, and no ambiguity about which "agent" produced a given claim — every finding in the [audit trail](#13-human-in-the-loop-audit-trail) traces to exactly one inference call.
 
-3. **Cost and latency stay bounded and predictable.** A multi-agent review pipeline typically means several-to-many LLM calls per document, often with inter-agent back-and-forth. LexTwin AI's AI cost is `O(aligned topics)` for contradiction detection and `O(flagged clauses a reviewer chooses to redline)` for drafting — both small, both directly visible to the user before they trigger it.
+3. **Cost and latency stay bounded and predictable — and, since inference is local, cost is literally zero regardless of volume.** A multi-agent review pipeline typically means several-to-many LLM calls per document, often with inter-agent back-and-forth. LexTwin AI's inference volume is `O(aligned topics)` for contradiction detection and `O(flagged clauses a reviewer chooses to redline)` for drafting — both small, both directly visible to the user before they trigger it, and neither ever hits a rate limit or a bill.
 
 4. **The [missing-reference guardrail](#6-missing-reference-refusal-guardrail) does the job a "Hallucination Guard agent" would otherwise need to do, but for free and with zero false-negative risk**, because it's a hard precondition enforced in code before the API call is ever constructed, not a second model asked to police the first one's output.
 
@@ -1373,12 +1374,12 @@ LexTwin AI uses **two different context strategies, deliberately**, depending on
 ```
 Question ──▶ embed (BAAI/bge-large-en-v1.5) ──▶ FAISS cosine search over
     all clauses' embeddings (embedded once per doc pair, in-process cache)
-    ──▶ top-8 clauses ──▶ numbered context block ──▶ AI provider
-    (Claude or Gemini) synthesizes a grounded answer + cites which
+    ──▶ top-8 clauses ──▶ numbered context block ──▶ local LLM
+    (Qwen2.5-7B-Instruct) synthesizes a grounded answer + cites which
     numbered clauses it used ──▶ backend maps citations back to clause_ids
 ```
 
-Embedding and vector search run **entirely locally** (`sentence-transformers` + `faiss-cpu`) — not routed through `AI_PROVIDER`, since embedding is retrieval infrastructure, not a judgment call, and Anthropic doesn't offer an embeddings endpoint at all. Only the final answer-synthesis step calls Claude or Gemini, with the same structured-output pattern used everywhere else in the app (a `ChatAnswer` schema with `answer` + `cited_refs`, validated by the SDK before it can reach the frontend).
+Embedding/vector search and answer synthesis **both run entirely locally** — two separate local models (`app/rag/embedder.py`'s BGE embedding model and `app/services/local_llm_client.py`'s Qwen2.5-7B), neither requiring an API key. The final answer-synthesis step uses the same structured-output pattern used everywhere else in the app (a `ChatAnswer` schema with `answer` + `cited_refs`, grammar-constrained and Pydantic-validated before it can reach the frontend).
 
 **A known, honest limitation:** dense single-vector retrieval genuinely struggles with *compound* questions (e.g. *"what are the payment terms, and is there a conflict between the MSA and SOW?"*) — the embedding ends up representing an average of both sub-questions, which can pull retrieval toward clauses about the MSA/SOW *relationship* in general rather than the specific payment clauses. Verified directly: for that exact compound phrasing, the actually-relevant `SOW §3.3` clause didn't appear even at `top_k=12`. Single, focused questions retrieve reliably. This is a well-known characteristic of naive dense retrieval, not a bug — query decomposition or hybrid (keyword + semantic) search would address it, and both are listed in the [Roadmap](#-future-enhancements--roadmap).
 
@@ -1414,11 +1415,12 @@ An honest accounting of what's in place and what isn't:
 |---|---|
 | **Authentication** | Not implemented. No login, no user accounts, no session management. Intended for local/demo/single-tenant use today. |
 | **Authorization** | Not applicable without authentication — every API endpoint is currently open to whoever can reach the backend process. |
-| **Secrets management** | `.env` (gitignored) for the active AI provider's API key and Firebase config path; `firebase-credentials.json` (gitignored) for the service-account key. None of these are ever sent to the frontend. |
+| **Secrets management** | `.env` (gitignored) for the Firebase config path — there is no AI provider API key anywhere in this project, so there's nothing there to leak. `firebase-credentials.json` (gitignored) for the service-account key. Neither is ever sent to the frontend. |
 | **Firebase access model** | Server-side only via the Admin SDK with a service-account credential — the frontend has zero direct Firebase access, so there is no client-side attack surface on Firestore. |
-| **Prompt-injection exposure** | Both AI calls (either provider) use **structured output** (Claude's `output_format=<PydanticModel>`, Gemini's `response_schema=<PydanticModel>`) with a narrow, fixed system prompt and a bounded input (one or two clause texts). This substantially limits — though does not formally eliminate — the blast radius of adversarial text embedded in a clause: even a successfully "injected" response is still forced through the same fixed schema before it can reach the frontend. |
-| **Hallucination mitigation** | The [missing-reference refusal guardrail](#6-missing-reference-refusal-guardrail) is a hard, code-level precondition — a clause is never sent to the AI provider for contradiction analysis if a document it structurally depends on is absent from the upload set. This is enforced before any API call is constructed, not policed after the fact. |
-| **Rate limiting** | Not implemented on the LexTwin API layer. Both the Anthropic and Google Gen AI SDKs apply their own retry/backoff for transient API errors, but there is no request throttling on `/api/*` today. |
+| **No external AI API calls at all** | Contradiction detection, redlining, and Chat with Contract's answer synthesis all run locally via `llama-cpp-python` — clause text (which may be confidential contract content) never leaves the machine running the backend, unlike a hosted-API architecture. |
+| **Prompt-injection exposure** | The local model call uses **grammar-constrained structured output** (`response_format={"type": "json_object", "schema": <PydanticModel>.model_json_schema()}`) with a narrow, fixed system prompt and a bounded input (one or two clause texts). This substantially limits — though does not formally eliminate — the blast radius of adversarial text embedded in a clause: even a successfully "injected" response is still forced through the same fixed JSON schema before it can reach the frontend. Note that grammar constraints enforce JSON *shape* (valid structure, required fields, correct types), not numeric-range semantics — a defensive Pydantic validator normalizes fields like `confidence` for exactly this gap (see `app/services/ai_schemas.py`). |
+| **Hallucination mitigation** | The [missing-reference refusal guardrail](#6-missing-reference-refusal-guardrail) is a hard, code-level precondition — a clause is never sent to the local model for contradiction analysis if a document it structurally depends on is absent from the upload set. This is enforced before any inference call is constructed, not policed after the fact. |
+| **Rate limiting** | Not implemented on the LexTwin API layer, and not needed for the local model (no external rate limit to hit) — though unbounded concurrent inference requests could still exhaust local CPU/RAM (see [Performance](#-performance)). |
 | **Input validation** | File uploads are size-capped (`MAX_UPLOAD_MB`) and filename-sanitized (alphanumeric + `._-` only) before being written to a temp path; all request/response bodies are Pydantic-validated. |
 | **Dependency/CORS scope** | CORS is currently locked to `http://localhost:5173` — a real deployment must update this to the actual frontend origin, not `*`. |
 
@@ -1431,14 +1433,16 @@ See [Roadmap](#-future-enhancements--roadmap) for authentication, authorization,
 | Area | Current approach |
 |---|---|
 | **Structural analysis cost** | Parsing, hierarchy, references, dependency graph, cycle detection, completeness check, and obligation extraction are all pure Python/regex/`networkx` — no network calls, effectively free and fast (sub-second on typical contract lengths). |
-| **AI call scoping** | Contradiction detection makes exactly one AI provider call per aligned, non-gated topic pair (not per-clause, not per-document, not streaming chat) — bounded and predictable cost per analysis, regardless of which provider is configured. Redline generation is one call per clause a reviewer explicitly chooses to redline. |
-| **Caching** | The multi-source reference library (`app/playbook/load_playbooks()`) is loaded once and memoized in-process (`functools.lru_cache`) — no repeated disk reads across requests. No response-level HTTP caching yet. |
+| **Local inference cost** | CPU-only local inference on a 7B model is measurably slower than a hosted API call — a single contradiction judgment or redline suggestion took roughly 1–2 minutes each on this project's development machine (a modest laptop CPU, no GPU). Contradiction detection still makes exactly one inference call per aligned, non-gated topic pair (not per-clause, not per-document); redline generation is one call per clause a reviewer explicitly chooses to redline — so latency scales with the number of judgment calls, not document size, but each call itself is slower than the equivalent hosted-API round trip would be. A GPU-accelerated `llama-cpp-python` build (CUDA/Metal) would substantially reduce this if available. |
+| **Memory footprint** | The local LLM (~3.8GB GGUF file) and, separately, the Chat with Contract embedding model (~1.3GB) are both loaded into the backend process's resident memory once first used, and stay resident (a `Llama`/`SentenceTransformer` singleton, not reloaded per request) — budget for both when sizing a deployment (see [Deployment](#-deployment)). |
+| **Concurrent inference requests** | Serialized through a single `threading.Lock()` in `local_llm_client.py` (see [Troubleshooting](#troubleshooting)) — the underlying llama.cpp context isn't safe for concurrent generation calls, so a second contradiction/redline/chat request arriving while one is already running waits for the first to finish rather than running in parallel. For a single-instance local deployment this is the correct tradeoff (safety over throughput); a multi-instance deployment behind a load balancer would parallelize across processes instead. |
+| **Caching** | The multi-source reference library (`app/playbook/load_playbooks()`) is loaded once and memoized in-process (`functools.lru_cache`) — no repeated disk reads across requests. The local LLM and embedding model are each loaded once (lazily, on first use) and reused for the life of the process, rather than reloaded per request. No response-level HTTP caching yet. |
 | **Async I/O** | The upload endpoint is `async def`; most other endpoints are synchronous FastAPI handlers (appropriate given they're CPU-bound regex/graph work, not I/O-bound). |
-| **Streaming** | Not implemented — AI provider responses are awaited in full before returning, appropriate for structured-output calls that must be schema-validated as a whole rather than rendered token-by-token. |
-| **Test suite runtime** | 206 tests total. The default suite (195 tests, `slow`/`llm`-marked tests excluded via `pytest.ini`) runs in ~50 seconds — most of that is import overhead from `sentence_transformers` (Chat with Contract), not the tests themselves; the full suite including slow real-contract-parsing and real-embedding-model tests runs in ~2.5 minutes. |
+| **Streaming** | Not implemented — local model responses are awaited in full before returning, appropriate for structured-output calls that must be schema-validated as a whole rather than rendered token-by-token. |
+| **Test suite runtime** | 208 tests total. The default suite (`slow`-marked tests excluded via `pytest.ini`) runs in well under a minute. The full suite — including real-contract-parsing, real-embedding-model, and real-local-LLM-inference tests — runs in roughly 4 minutes, dominated by the local model actually generating a contradiction judgment against real sample contracts. |
 | **Graph rendering** | React Flow handles moderate node/edge counts (tens to low hundreds) smoothly client-side; not yet load-tested against very large multi-hundred-clause contract sets. |
 
-See [Roadmap](#-future-enhancements--roadmap) for planned caching, async LLM calls, and streaming improvements.
+See [Roadmap](#-future-enhancements--roadmap) for planned caching, async inference calls, and streaming improvements.
 
 ---
 
@@ -1452,7 +1456,7 @@ The frontend is a standard Vite + React static build (`npm run build` → `front
 
 ### Backend deployment (recommended: Render)
 
-The backend is a standard FastAPI app served by `uvicorn`, which deploys cleanly to Render, Railway, Fly.io, or any Python-capable PaaS. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set `AI_PROVIDER` plus the matching key (`ANTHROPIC_API_KEY` or `GEMINI_API_KEY`), `USE_FIREBASE`, and (if applicable) mount `firebase-credentials.json` as a secret file, via the platform's environment/secret configuration — never commit these.
+The backend is a standard FastAPI app served by `uvicorn`, which deploys cleanly to Render, Railway, Fly.io, or any Python-capable PaaS. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set `USE_FIREBASE` and (if applicable) mount `firebase-credentials.json` as a secret file via the platform's environment/secret configuration — no AI provider API key is needed since contradiction detection, redlining, and Chat with Contract's answer synthesis all run locally. **Sizing note:** since the local LLM and embedding model both run in-process (see [Performance](#-performance)), pick a plan with enough RAM (8GB+ recommended) and CPU headroom for the host, not just enough for a typical lightweight API service.
 
 **Before deploying, update `app/main.py`'s `CORSMiddleware`** to allow your real frontend origin instead of `http://localhost:5173`.
 
@@ -1526,7 +1530,7 @@ docs/screenshots/
 Contributions are welcome. To keep the codebase's deterministic-first philosophy intact, please read this before opening a PR:
 
 1. **Fork the repository** and create a feature branch from `main`: `git checkout -b feature/your-feature-name`.
-2. **Match the existing architecture**: if a feature can be implemented deterministically (regex, graph algorithm, rule-based logic), it should be — reserve LLM calls for genuine judgment tasks, and gate them behind structured output (a fixed Pydantic schema), following the pattern in `app/services/claude_client.py`.
+2. **Match the existing architecture**: if a feature can be implemented deterministically (regex, graph algorithm, rule-based logic), it should be — reserve local-model calls for genuine judgment tasks, and gate them behind grammar-constrained structured output (a fixed Pydantic schema), following the pattern in `app/services/local_llm_client.py`.
 3. **Write tests.** Every deterministic module has corresponding unit tests in `backend/tests/`; a PR that adds parsing/graph/extraction logic without tests will not be merged. Run the fast suite locally before opening a PR:
    ```bash
    cd backend && pytest
@@ -1558,8 +1562,8 @@ This project is licensed under the **MIT License** — see [LICENSE](./LICENSE) 
 
 ## 🙏 Acknowledgements
 
-- **[Anthropic](https://www.anthropic.com/)** — Claude API, the default provider for contradiction detection and redline drafting.
-- **[Google](https://ai.google.dev/)** — Gemini API via the `google-genai` SDK, the alternative AI provider (`AI_PROVIDER=gemini`).
+- **[Qwen team, Alibaba](https://huggingface.co/Qwen)** — Qwen2.5-7B-Instruct, the local model powering contradiction detection, redline drafting, and Chat with Contract's answer synthesis.
+- **[llama.cpp](https://github.com/ggml-org/llama.cpp)** and **[llama-cpp-python](https://github.com/abetlen/llama-cpp-python)** — local GGUF model inference, including grammar-constrained (GBNF) structured JSON output.
 - **[The Atticus Project](https://www.atticusprojectai.org/)** — CUAD v1 dataset.
 - **[LexGLUE](https://github.com/coastalcph/lex-glue)** (Chalkidis et al.) — LEDGAR and Unfair ToS datasets.
 - **[Stanford NLP Group](https://stanfordnlp.github.io/contract-nli/)** — ContractNLI dataset (Koreeda & Manning, EMNLP Findings 2021).

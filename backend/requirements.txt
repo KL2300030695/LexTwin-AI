@@ -7,13 +7,20 @@ python-docx==1.1.2
 networkx==3.3
 diff-match-patch==20230430
 firebase-admin==6.5.0
-anthropic==0.116.0
-google-genai==2.11.0
 
-# Chat with Contract (RAG): local embeddings + vector search, not an AI
-# provider call -- retrieval is deterministic, only answer synthesis uses
-# the configured AI provider (see app/services/chat_service.py). Heavy
-# (pulls in PyTorch, ~1.3GB model download on first use).
+# Local LLM (contradiction detection, redlining, Chat with Contract answer
+# synthesis) -- no API key, runs entirely on-machine. Downloads a ~2GB GGUF
+# model from Hugging Face Hub on first use (see app/services/local_llm_client.py).
+# May need a C++ build toolchain (CMake + MSVC/gcc/clang) to compile if no
+# prebuilt wheel matches your platform/Python version -- took ~12 minutes to
+# build from source on this project's dev machine.
+llama-cpp-python==0.3.34
+
+# Chat with Contract (RAG) retrieval: local embeddings + vector search, a
+# SEPARATE local model from the one above -- retrieval is deterministic math
+# (embed + cosine search), only answer synthesis uses the local LLM (see
+# app/services/chat_service.py). Heavy (pulls in PyTorch, ~1.3GB model
+# download on first use).
 sentence-transformers==5.6.0
 faiss-cpu==1.14.3
 pytest==8.3.3

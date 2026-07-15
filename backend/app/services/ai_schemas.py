@@ -1,10 +1,11 @@
-"""Structured-output schemas and system prompts shared by every AI provider
-(Claude, Gemini, ...) -- provider-agnostic, so switching AI_PROVIDER never
-changes what's being asked or how the answer is validated. Only the transport
-(app/services/claude_client.py, app/services/gemini_client.py) differs."""
+"""Structured-output schemas and system prompts for the local LLM
+(app/services/local_llm_client.py). Kept as a separate module (rather than
+inline in the client) so the prompt/schema contract is the single place
+that changes if the model or its structured-output mechanism ever does.
+"""
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 CONTRADICTION_SYSTEM_PROMPT = (
     "You are a contract-review assistant comparing a clause in a Master Service "
@@ -26,8 +27,26 @@ class ContradictionJudgment(BaseModel):
         description="One to two sentence explanation of why they conflict, or why they don't."
     )
     confidence: float = Field(
-        description="Confidence in this judgment, from 0.0 (low) to 1.0 (high).", ge=0.0, le=1.0
+        description=(
+            "Confidence in this judgment, as a DECIMAL FRACTION between 0.0 (low) and 1.0 (high) -- "
+            "e.g. 0.9 for high confidence. NOT a percentage: do not write 90, write 0.9."
+        ),
+        ge=0.0,
+        le=1.0,
     )
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _normalize_percentage_confidence(cls, value: float) -> float:
+        """Grammar-constrained local-model decoding enforces JSON *shape*
+        (valid number, required field) but not numeric-range semantics like
+        Pydantic's ge=0/le=1 -- verified directly: despite an explicit 0.0-1.0
+        instruction in both the prompt and this field's own description, a
+        real run returned confidence: 100. Treat any value over 1 as a
+        0-100 percentage the model used instead, then clamp defensively."""
+        if isinstance(value, (int, float)) and value > 1:
+            value = value / 100
+        return max(0.0, min(1.0, value))
 
 
 class FallbackSuggestion(BaseModel):

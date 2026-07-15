@@ -3,9 +3,9 @@
 'Align clauses covering the same topic (payment terms, liability,
 termination, etc.)' -- this is a structural/keyword matching problem, not a
 reasoning problem, so it's solved with regexes over clause headings rather
-than an LLM call. Claude is reserved for the actual contradiction judgment
-(see app/services/claude_client.py), consistent with using the LLM only for
-what can't be done deterministically.
+than an LLM call. The local model is reserved for the actual contradiction
+judgment (see app/services/local_llm_client.py), consistent with using the
+LLM only for what can't be done deterministically.
 
 The topic taxonomy itself is the configurable legal playbook
 (app/playbook/topic_rules.py) -- editable via /api/playbook/topics rather

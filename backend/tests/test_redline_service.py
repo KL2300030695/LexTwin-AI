@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from app.models.schema import Clause, DocType, ParsedDocument
-from app.services.claude_client import FallbackSuggestion
+from app.services.ai_schemas import FallbackSuggestion
 from app.services.redline_service import generate_redline
 
 
@@ -117,8 +117,8 @@ def test_generate_redline_missing_reference_document_raises(sow_and_msa):
 
 def test_embedded_pdf_linewrap_newlines_do_not_pollute_the_diff():
     """Regression: PyMuPDF-extracted clause text carries a literal '\\n' at
-    each PDF line-wrap point (see Phase 2's structure.py). Claude's generated
-    fallback is flowing prose with no such newline. Without whitespace
+    each PDF line-wrap point (see Phase 2's structure.py). The local model's
+    generated fallback is flowing prose with no such newline. Without whitespace
     normalization this produced a spurious whitespace-only delete/insert
     hunk alongside the real word change."""
     sow = _doc("sow1", DocType.SOW, [

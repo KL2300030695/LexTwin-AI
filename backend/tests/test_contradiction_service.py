@@ -1,14 +1,16 @@
 """Tests the contradiction detection pipeline (alignment -> Phase 4 gating ->
-Claude judgment) with the Claude call mocked out -- these must never hit the
-real network. See test_contradiction_integration_llm.py for the real-API
-smoke test (skipped unless ANTHROPIC_API_KEY is set)."""
+local model judgment) with the model call mocked out -- these must never
+load the real (multi-GB) model or run real inference. See
+test_contradiction_integration_llm.py for the real-model smoke test
+(marked slow)."""
 from unittest.mock import patch
 
 import pytest
 
 from app.models.contradiction import ContradictionStatus
 from app.models.schema import Clause, DocType, ParsedDocument, Reference, ReferenceType
-from app.services.claude_client import ClaudeClientError, ContradictionJudgment
+from app.services.ai_schemas import ContradictionJudgment
+from app.services.local_llm_client import LocalLLMClientError
 from app.services.contradiction_service import analyze_contradictions
 
 
@@ -49,7 +51,7 @@ def _mock_get_document(docs_by_id):
     return _get
 
 
-def test_analyzed_pair_calls_claude_and_records_judgment(msa_and_sow):
+def test_analyzed_pair_calls_local_model_and_records_judgment(msa_and_sow):
     msa, sow = msa_and_sow
     docs = {"msa1": msa, "sow1": sow}
 
@@ -85,9 +87,9 @@ def test_no_contradiction_judgment_not_counted(msa_and_sow):
     assert result.contradictions_found == 0
 
 
-def test_missing_reference_blocks_pair_without_calling_claude():
+def test_missing_reference_blocks_pair_without_calling_local_model():
     """A clause that references a missing exhibit must be skipped entirely --
-    Claude must never be asked to reason about content it wasn't given."""
+    The local model must never be asked to reason about content it wasn't given."""
     msa = _doc("msa1", DocType.MSA, [
         _clause(
             "msa1", DocType.MSA, "5.1", "Invoicing and Payment",
@@ -112,18 +114,18 @@ def test_missing_reference_blocks_pair_without_calling_claude():
     assert result.contradictions_found == 0
 
 
-def test_claude_error_recorded_as_error_status(msa_and_sow):
+def test_local_model_error_recorded_as_error_status(msa_and_sow):
     msa, sow = msa_and_sow
     docs = {"msa1": msa, "sow1": sow}
 
     with patch("app.services.contradiction_service.get_document", side_effect=_mock_get_document(docs)), \
-         patch("app.services.contradiction_service.check_contradiction", side_effect=ClaudeClientError("rate limited")):
+         patch("app.services.contradiction_service.check_contradiction", side_effect=LocalLLMClientError("model unavailable")):
         result = analyze_contradictions("msa1", "sow1")
 
     assert len(result.results) == 1
     r = result.results[0]
     assert r.status == ContradictionStatus.ERROR
-    assert "rate limited" in r.reason
+    assert "model unavailable" in r.reason
     assert result.contradictions_found == 0
 
 

@@ -1,14 +1,14 @@
 """End-to-end check of the /api/contradictions/analyze HTTP endpoint (request
-parsing, service wiring, response serialization) with the Claude call mocked
-out -- exercises the real FastAPI app without hitting the network or
-requiring an API key."""
+parsing, service wiring, response serialization) with the local model call
+mocked out -- exercises the real FastAPI app without loading the real model
+or running real inference."""
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.schema import Clause, DocType, ParsedDocument
-from app.services.claude_client import ContradictionJudgment
+from app.services.ai_schemas import ContradictionJudgment
 
 client = TestClient(app)
 

@@ -1,14 +1,16 @@
-"""Live smoke test against the real Claude API and real sample contracts.
+"""Live smoke test against the real local model (downloads/loads the actual
+GGUF model, real inference) and real sample contracts.
 
-Costs money and requires ANTHROPIC_API_KEY, so it's marked `llm` and excluded
-from the default test run (see pytest.ini). Run explicitly:
-    pytest -m llm tests/test_contradiction_integration_llm.py
+No API key and no cost -- everything runs on-machine -- but real inference
+is slow (a multi-second-to-minute model load plus real generation time), so
+this is marked `slow` like the embedding model tests and excluded from the
+default run (see pytest.ini). Run explicitly:
+    pytest -m slow tests/test_contradiction_integration_llm.py
 """
 from pathlib import Path
 
 import pytest
 
-from app.config import settings
 from app.models.contradiction import ContradictionStatus
 from app.parsers import parse_document
 from app.models.schema import DocType
@@ -19,8 +21,7 @@ MSA_PATH = SAMPLES_DIR / "msa_sample.pdf"
 SOW_PATH = SAMPLES_DIR / "sow_sample.pdf"
 
 pytestmark = [
-    pytest.mark.llm,
-    pytest.mark.skipif(not settings.ANTHROPIC_API_KEY, reason="ANTHROPIC_API_KEY not set"),
+    pytest.mark.slow,
     pytest.mark.skipif(
         not (MSA_PATH.exists() and SOW_PATH.exists()),
         reason="Sample PDFs not generated yet -- run `python scripts/generate_samples.py`",
@@ -28,7 +29,7 @@ pytestmark = [
 ]
 
 
-def test_real_claude_detects_seeded_payment_contradiction(monkeypatch):
+def test_local_model_detects_seeded_payment_contradiction(monkeypatch):
     msa = parse_document(str(MSA_PATH), "msa-llm-test", "msa_sample.pdf", DocType.MSA)
     sow = parse_document(str(SOW_PATH), "sow-llm-test", "sow_sample.pdf", DocType.SOW)
     docs = {"msa-llm-test": msa, "sow-llm-test": sow}
