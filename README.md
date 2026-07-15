@@ -52,6 +52,7 @@
 - [Database Design](#-database-design)
 - [AI Pipeline](#-ai-pipeline)
 - [AI Usage Model (Why Not Multi-Agent?)](#-ai-usage-model-why-not-multi-agent)
+- [Model Evaluation](#-model-evaluation)
 - [The Digital Twin (Dependency Graph)](#-the-digital-twin-dependency-graph)
 - [Retrieval & Context Handling](#-retrieval--context-handling)
 - [Firebase Architecture](#-firebase-architecture)
@@ -1347,6 +1348,32 @@ A natural question when building an "AI contract review" tool is whether to reac
 4. **The [missing-reference guardrail](#6-missing-reference-refusal-guardrail) does the job a "Hallucination Guard agent" would otherwise need to do, but for free and with zero false-negative risk**, because it's a hard precondition enforced in code before the API call is ever constructed, not a second model asked to police the first one's output.
 
 This doesn't mean multi-agent orchestration has no place here — a genuinely open-ended task like *"simulate a full negotiation between two parties"* or *"answer any free-form question about this contract set"* would legitimately benefit from a coordinator dispatching to specialists with tool access. Both of those are listed honestly in the [Roadmap](#-future-enhancements--roadmap) as **not yet built**, precisely because they don't fit today's narrow, structured-output call pattern.
+
+---
+
+## 📊 Model Evaluation
+
+Real, measured accuracy for the local model's contradiction judgment — not just spot-checks — using **ContractNLI** (Koreeda & Manning, EMNLP Findings 2021), a real, human-annotated legal NLI dataset already used elsewhere in this project (see [feature 9](#9-multi-source-legal-reference-library)).
+
+**Important scope caveat, up front:** `CONTRADICTION_SYSTEM_PROMPT` (`app/services/ai_schemas.py`) is hardcoded to "MSA clause vs. SOW clause" framing, since that's the app's actual production task. ContractNLI is a different task shape — a single NDA clause vs. a fixed hypothesis statement — so this evaluation uses a generic contradiction-vs-entailment prompt appropriate to *that* shape, calling the exact same underlying model and grammar-constrained JSON mechanism (`local_llm_client._structured_chat_completion`) the production code uses. It measures the local model's general contradiction-judgment capability, not a literal replay of the production MSA/SOW prompt. The script is committed at `backend/scripts/evaluate_contradiction_model.py` — every input, output, and label it uses is inspectable there and in `backend/eval_results/`.
+
+**Methodology:** 24 examples (12 labeled `Contradiction`, 12 labeled `Entailment`, stratified random sample, seed `0`) from ContractNLI's `test.json` split. `NotMentioned`-labeled examples are excluded — there's no textual evidence to call those a contradiction or not, one way or the other. Each example uses ContractNLI's own gold evidence spans as the premise text (the "oracle evidence" setting from the ContractNLI paper itself, not a separate retrieval step) — this isolates the judgment task from a retrieval problem this evaluation doesn't attempt to solve.
+
+**A real, verified finding from running this eval:** the first run — with `ContradictionJudgment`'s fields ordered `has_contradiction` → `explanation` → `confidence` — scored **0% recall on real contradictions** (every single example predicted "no contradiction," including all 12 true positives). Reading the raw model outputs explained why: under grammar-constrained (GBNF) decoding, the model must emit JSON keys in the schema's declared order, so it was forced to commit to the boolean *before generating a single token of reasoning about it*. Several of its own `explanation` fields literally reasoned to the word "contradicts" — and the `has_contradiction` field the model had already committed to still said `false`. Reordering the schema to `explanation` → `has_contradiction` → `confidence` (letting the model reason before it answers) fixed this:
+
+| Metric | Before (answer before reasoning) | After (reasoning before answer) |
+|---|---|---|
+| Accuracy | 0.50 | **0.79** |
+| Precision | 0.00 | **0.77** |
+| Recall | 0.00 | **0.83** |
+| F1 | 0.00 | **0.80** |
+| Confusion matrix (tp / fp / tn / fn) | 0 / 0 / 12 / 12 | 10 / 3 / 9 / 2 |
+
+Both raw result sets (every example, its prediction, and the model's full explanation text) are committed at `backend/eval_results/contractnli_contradiction_eval_before_fix.json` and `backend/eval_results/contractnli_contradiction_eval.json` (the current, post-fix schema).
+
+**A second experiment that was tried and deliberately rejected:** looking at the 5 remaining wrong answers after the schema fix, 3 of them shared one exact pattern — an NDA carve-out clause like *"Confidential Information does not include information that was independently developed by the Receiving Party"* was being misread as a *prohibition* on independent development (a contradiction), when it actually means the opposite: doing so excludes that information from being confidential, which **supports** a statement that independent development is permitted. Adding explicit guidance about this pattern to the prompt fixed exactly what it targeted — precision rose from 0.77 to 0.90 — but the longer, more elaborate explanations it produced triggered a new, separate failure mode: 6 of 24 examples (25%) came back with a raw, unescaped control character inside the model's JSON string output, failing schema validation even under grammar-constrained decoding. Recall also dropped (0.83 → 0.75). Net effect: not adopted as the default, since a 25% failure rate is a worse tradeoff than the false positives it fixed. Kept for transparency at `backend/eval_results/contractnli_contradiction_eval_carveout_experiment.json`, and the guidance itself is left in `evaluate_contradiction_model.py` as a commented-out note rather than silently discarded.
+
+**Honest limitations of this evaluation:** 24 examples is a small sample — enough to catch and fix a systematic failure mode, not enough to report a tight confidence interval on the exact accuracy figure. It evaluates a generic NLI-shaped prompt, not the literal production MSA/SOW prompt (which has been separately, if only qualitatively, verified correct on real seeded and live test cases — see [feature 7](#7-cross-document-contradiction-detection)). No equivalent quantitative evaluation exists yet for redline generation or Chat with Contract's answer synthesis — see [Roadmap](#-future-enhancements--roadmap).
 
 ---
 

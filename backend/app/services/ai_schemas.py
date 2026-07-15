@@ -20,11 +20,24 @@ CONTRADICTION_SYSTEM_PROMPT = (
 
 
 class ContradictionJudgment(BaseModel):
-    has_contradiction: bool = Field(
-        description="Whether the two clauses impose materially conflicting obligations or terms."
-    )
+    """Field order matters here, not just for readability: under grammar-
+    constrained (GBNF) decoding the model must emit JSON keys in this
+    schema's declared order, so `explanation` is placed before
+    `has_contradiction` deliberately -- forcing the boolean first would make
+    the model commit to an answer before generating a single token of
+    reasoning about it. Verified directly: with `has_contradiction` first,
+    an evaluation against ContractNLI's labeled examples got 0% recall on
+    real contradictions, even though several of the model's own
+    `explanation` outputs correctly reasoned toward "contradicts" -- the
+    boolean it had already committed to just didn't match its own later
+    reasoning. See backend/scripts/evaluate_contradiction_model.py.
+    """
+
     explanation: str = Field(
         description="One to two sentence explanation of why they conflict, or why they don't."
+    )
+    has_contradiction: bool = Field(
+        description="Whether the two clauses impose materially conflicting obligations or terms."
     )
     confidence: float = Field(
         description=(
