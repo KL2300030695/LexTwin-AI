@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, Field
-
+# Testing pull request workflow
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
