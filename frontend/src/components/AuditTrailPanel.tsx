@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { AuditEntry } from '../types/audit'
+import { useAuth } from '../contexts/AuthContext'
+import { hasRoleAtLeast } from '../types/user'
 
 const DECISION_PILL: Record<AuditEntry['decision'], string> = {
   pending: 'border-seal-amber/30 bg-seal-amber-tint text-seal-amber',
@@ -28,6 +30,12 @@ export default function AuditTrailPanel({
 }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [historyOpenId, setHistoryOpenId] = useState<string | null>(null)
+  const { profile } = useAuth()
+  // Recording a decision requires 'approver' or higher on the backend (see
+  // app/routers/audit.py) -- hiding the controls for a plain reviewer here
+  // avoids showing a button that would just 403, but the backend is what
+  // actually enforces this; this is a UX convenience, not the security boundary.
+  const canDecide = hasRoleAtLeast(profile?.role, 'approver')
 
   if (entries.length === 0) {
     return (
@@ -40,7 +48,7 @@ export default function AuditTrailPanel({
   return (
     <ul className="space-y-3">
       {entries.map((entry) => {
-        const isEditing = entry.decision === 'pending' || editingId === entry.id
+        const isEditing = canDecide && (entry.decision === 'pending' || editingId === entry.id)
         const hasHistory = entry.revision_history.length > 0
         const isHistoryOpen = historyOpenId === entry.id
 
@@ -106,7 +114,9 @@ export default function AuditTrailPanel({
             ) : (
               <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2">
                 <p className="font-mono text-[11px] text-slate-body">
-                  {formatDecisionLine(entry.decision, entry.reviewer, entry.decided_at)}
+                  {entry.decision === 'pending'
+                    ? 'Pending review — needs an approver to decide'
+                    : formatDecisionLine(entry.decision, entry.reviewer, entry.decided_at)}
                   {hasHistory && ` · corrected ${entry.revision_history.length}×`}
                 </p>
                 <div className="flex items-center gap-3">
@@ -118,12 +128,14 @@ export default function AuditTrailPanel({
                       {isHistoryOpen ? 'Hide history' : 'View history'}
                     </button>
                   )}
-                  <button
-                    onClick={() => setEditingId(entry.id)}
-                    className="rounded-sm border border-ledger px-2.5 py-1 font-mono text-[11px] text-slate-body transition-colors hover:border-ink hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue"
-                  >
-                    Change decision
-                  </button>
+                  {canDecide && entry.decision !== 'pending' && (
+                    <button
+                      onClick={() => setEditingId(entry.id)}
+                      className="rounded-sm border border-ledger px-2.5 py-1 font-mono text-[11px] text-slate-body transition-colors hover:border-ink hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue"
+                    >
+                      Change decision
+                    </button>
+                  )}
                 </div>
               </div>
             )}

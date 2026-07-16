@@ -7,6 +7,8 @@ import {
   savePlaybookTopics,
 } from '../api/client'
 import type { ReferenceCategory, TopicRule } from '../types/playbook'
+import { useAuth } from '../contexts/AuthContext'
+import { hasRoleAtLeast } from '../types/user'
 
 interface EditableTopic {
   topic: string
@@ -30,6 +32,11 @@ function toTopicRules(editable: EditableTopic[]): TopicRule[] {
 }
 
 export default function PlaybookPage() {
+  const { profile } = useAuth()
+  // Editing the shared Playbook config is admin-only on the backend (see
+  // app/routers/playbook.py) -- hiding the controls here is a UX
+  // convenience, the backend 403 is the real boundary.
+  const canEdit = hasRoleAtLeast(profile?.role, 'admin')
   const [topics, setTopics] = useState<EditableTopic[]>([])
   const [referenceCategories, setReferenceCategories] = useState<ReferenceCategory[]>([])
   const [loading, setLoading] = useState(true)
@@ -111,6 +118,12 @@ export default function PlaybookPage() {
 
       {message && <div className="mt-4 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div>}
 
+      {!canEdit && (
+        <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+          You're viewing the Playbook read-only — editing topic rules requires the "admin" role.
+        </div>
+      )}
+
       <div className="mt-6 space-y-3">
         {topics.map((t, i) => (
           <div key={i} className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white p-3">
@@ -119,47 +132,53 @@ export default function PlaybookPage() {
                 value={t.topic}
                 onChange={(e) => updateTopic(i, 'topic', e.target.value)}
                 placeholder="Topic name (e.g. Payment Terms)"
-                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium"
+                readOnly={!canEdit}
+                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium read-only:bg-slate-50 read-only:text-slate-500"
               />
               <input
                 value={t.patternsText}
                 onChange={(e) => updateTopic(i, 'patternsText', e.target.value)}
                 placeholder={'Regex patterns, comma-separated (e.g. \\binvoic, \\bpayment terms\\b)'}
-                className="w-full rounded-md border border-slate-300 px-2 py-1.5 font-mono text-xs"
+                readOnly={!canEdit}
+                className="w-full rounded-md border border-slate-300 px-2 py-1.5 font-mono text-xs read-only:bg-slate-50 read-only:text-slate-500"
               />
             </div>
-            <button
-              onClick={() => removeTopic(i)}
-              className="rounded-md border border-red-300 px-2 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-            >
-              Remove
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => removeTopic(i)}
+                className="rounded-md border border-red-300 px-2 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+              >
+                Remove
+              </button>
+            )}
           </div>
         ))}
       </div>
 
-      <div className="mt-4 flex gap-2">
-        <button
-          onClick={addTopic}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-        >
-          + Add topic
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          Save
-        </button>
-        <button
-          onClick={handleReset}
-          disabled={saving}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-        >
-          Reset to defaults
-        </button>
-      </div>
+      {canEdit && (
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={addTopic}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            + Add topic
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+          >
+            Save
+          </button>
+          <button
+            onClick={handleReset}
+            disabled={saving}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+          >
+            Reset to defaults
+          </button>
+        </div>
+      )}
 
       <div className="mt-8 border-t border-slate-200 pt-4">
         <p className="text-sm font-semibold text-slate-900">Reference categories</p>

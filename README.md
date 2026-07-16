@@ -43,6 +43,7 @@
   13. [Human-in-the-Loop Audit Trail](#13-human-in-the-loop-audit-trail)
   14. [Downloadable PDF Risk Report](#14-downloadable-pdf-risk-report)
   15. [Chat with Contract (RAG)](#15-chat-with-contract-rag)
+  16. [Authentication & Role-Based Access Control](#16-authentication--role-based-access-control)
 - [Complete System Architecture](#-complete-system-architecture)
 - [Folder Structure](#-folder-structure)
 - [Installation](#-installation)
@@ -380,7 +381,7 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Purpose.** Every AI-assisted finding is a *suggestion*, not an automatic action — the audit trail is where a human reviewer records the final call, creating a durable record of who decided what and why.
 
-**How it works.** From the risk detail panel, a reviewer can log an `AuditEntry` capturing the original clause text, the risk rating, the AI's suggestion/rationale (if any), and then record a `decision` (`approved`/`rejected`) with an optional `reviewer` name and timestamp. Entries are scoped to the specific MSA/SOW pair and listed chronologically in the workspace's Audit Trail tab.
+**How it works.** From the risk detail panel, a reviewer can log an `AuditEntry` capturing the original clause text, the risk rating, and the AI's suggestion/rationale (if any). Recording a `decision` (`approved`/`rejected`) requires the `approver` role or higher (see [feature 16](#16-authentication--role-based-access-control)) — the `reviewer` field is no longer a client-supplied string; it's derived server-side from the caller's verified Firebase identity, so it can't be spoofed. Entries are scoped to the specific MSA/SOW pair and listed chronologically in the workspace's Audit Trail tab.
 
 **Corrections are part of the trail, not silent overwrites.** A reviewer can click "Change decision" on any already-decided entry to approve/reject it again — but the *previous* decision isn't discarded: `record_decision()` appends it to that entry's `revision_history[]` (decision, reviewer, timestamp) before applying the new one. The UI shows *"Rejected by ... · corrected 1×"* with a "View history" toggle that reveals the superseded decision(s) underneath. If you approve something and later spot an error, fixing it is itself a recorded, visible event — exactly what "maintain a complete audit trail of ... human reviewer decisions" (plural) means for a compliance tool: the correction has to be as auditable as the original call.
 
@@ -394,7 +395,7 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 
 **Benefits.** Produces exactly the kind of reviewable, timestamped decision log a legal/compliance team needs for sign-off — nothing in this app silently modifies a contract; every AI output requires an explicit human decision to be recorded as accepted, and every *correction* to that decision is equally durable and visible rather than an untracked overwrite.
 
-**Possible improvements.** No user authentication yet, so `reviewer` is a free-text field rather than a verified identity (see [Security](#-security)); no bulk-approve workflow for large risk lists.
+**Possible improvements.** No bulk-approve workflow for large risk lists yet.
 
 ---
 
@@ -435,6 +436,28 @@ Each feature below documents its purpose, mechanism, inputs/outputs, technology,
 **Benefits.** Every answer is auditable back to a specific clause, not a black-box summary; retrieval always runs locally regardless of provider, so browsing/asking cheap questions never touches an external API even when Gemini is selected for synthesis; reuses the exact same structured-output pattern and `ClauseCard` citation UI already established elsewhere in the app rather than inventing a parallel system.
 
 **Possible improvements.** Dense single-vector retrieval measurably struggles with *compound* questions (verified directly — see [Retrieval & Context Handling](#-retrieval--context-handling)); query decomposition or hybrid keyword+semantic search would address this. No persistent index across process restarts (in-memory cache only). No multi-turn topic tracking beyond resending raw history text.
+
+---
+
+### 16. Authentication & Role-Based Access Control
+
+**Purpose.** Every API endpoint was previously wide open to anyone who could reach the backend process, and the audit trail's `reviewer` field was free text a caller could set to anything. This closes both gaps: real accounts, and a verified identity behind every recorded decision.
+
+**How it works.** Firebase Authentication (email/password) handles identity. The frontend (Firebase Web SDK) signs a user in and attaches their ID token to every API request (`api/client.ts`'s axios interceptor); the backend independently verifies that token on every single route (`app/auth/__init__.py`'s `get_current_user`, a FastAPI dependency applied at the router level in `main.py` — there is no endpoint left unauthenticated). Roles — `reviewer` < `approver` < `admin`, cumulative — are stored as **Firebase custom claims** on the user's account rather than a separate Firestore `users` collection, set via the Admin SDK (`firebase_admin.auth.set_custom_user_claims`) and read directly out of the already-verified token, so authorizing a request never needs an extra database round-trip. `require_role(minimum)` is a second FastAPI dependency layered on top of `get_current_user` for the two actions that specifically need more than "logged in": recording an audit decision (`approver`+) and editing the shared Playbook config (`admin`+).
+
+**The bootstrap problem, solved without a hardcoded backdoor.** Assigning roles requires an admin — but the very first user can't have been assigned admin by anyone. `POST /api/auth/bootstrap-admin` lets any authenticated caller promote *themselves* to admin, but only while the system has zero admins; the moment one exists, every subsequent call 403s. No seed script, no default credential to remember to change.
+
+**Input.** A Firebase ID token (every request); `POST /api/auth/bootstrap-admin` (no body, self-promotion); `PUT /api/auth/users/{uid}/role` (admin-only, assigns another user's role).
+
+**Processing.** Token verification → custom-claim decode → role-rank comparison (`require_role`) → route handler, only reached if both checks pass.
+
+**Output.** `UserProfile` (`uid`, `email`, `role`) from `/api/auth/me`; `UserProfile[]` from `/api/auth/users` (admin-only, backs the Manage Users page).
+
+**Technologies used.** `firebase-admin`'s `auth` module (already a dependency for Firestore — no new backend package), the `firebase` npm package (client SDK, frontend-only).
+
+**Benefits.** No unauthenticated endpoint anywhere; the audit trail's `reviewer` field is now something a caller genuinely cannot spoof; role checks are cumulative and centralized in one place (`require_role`) rather than duplicated per-route; the frontend hides controls a role can't use, but the 401/403 from the backend is the actual boundary, not the UI hiding a button — verified directly with dedicated tests (`test_reviewer_cannot_edit_topics`, `test_reviewer_can_create_and_list_but_not_decide`, etc.) that check the HTTP status code, not just what the UI shows.
+
+**Possible improvements.** Email/password only — no OAuth (Google/Microsoft sign-in) yet. No email verification or password-reset flow wired up in the UI (Firebase Auth supports both; this app doesn't call them yet). Role changes take effect on the affected user's next token refresh (up to ~1 hour, or immediately if they sign out and back in) rather than instantly, since custom claims are baked into the token at issuance, not looked up live.
 
 ---
 
@@ -535,6 +558,9 @@ LexTwin AI/
 │   │   ├── config.py                 # Settings loaded from .env (Firebase, local LLM config, upload limits)
 │   │   ├── firebase.py               # Storage abstraction: Firestore + local-disk fallback
 │   │   │
+│   │   ├── auth/                     # Firebase Auth token verification + role dependencies
+│   │   │   └── __init__.py           #   get_current_user, require_role, Role, CurrentUser
+│   │   │
 │   │   ├── models/                   # Pydantic schemas (shared request/response contracts)
 │   │   │   ├── schema.py             #   Clause, ParsedDocument, Reference, TableModel, DocType
 │   │   │   ├── graph.py              #   GraphAnalysis, GraphNode/Edge, CircularReferenceGroup
@@ -545,7 +571,8 @@ LexTwin AI/
 │   │   │   ├── playbook.py           #   TopicRule, TopicRulesConfig
 │   │   │   ├── audit.py              #   AuditEntry, AuditDecision
 │   │   │   ├── report.py             #   ReportRequest, ReportRiskFlag
-│   │   │   └── chat.py               #   ChatRequest, ChatResponse, ChatCitation
+│   │   │   ├── chat.py               #   ChatRequest, ChatResponse, ChatCitation
+│   │   │   └── user.py               #   UserProfile, RoleUpdate
 │   │   │
 │   │   ├── parsers/                  # Format-specific → common intermediate form
 │   │   │   ├── pdf_parser.py         #   PyMuPDF-based text/table/page extraction
@@ -595,9 +622,11 @@ LexTwin AI/
 │   │   │   ├── ai_schemas.py         #   Shared prompts + Pydantic schemas (provider-agnostic)
 │   │   │   ├── ai_errors.py          #   Shared AIClientError base exception
 │   │   │   ├── local_llm_client.py   #   Runs Qwen2.5-7B-Instruct locally via llama-cpp-python -- no API key (default provider)
-│   │   │   └── gemini_client.py      #   Calls the Google Gen AI API (AI_PROVIDER=gemini, optional)
+│   │   │   ├── gemini_client.py      #   Calls the Google Gen AI API (AI_PROVIDER=gemini, optional)
+│   │   │   └── user_service.py       #   Role management via Firebase Auth custom claims
 │   │   │
 │   │   └── routers/                  # FastAPI route definitions (thin — delegate to services)
+│   │       ├── auth.py               #   /me, /bootstrap-admin, /users, /users/{uid}/role
 │   │       ├── documents.py
 │   │       ├── graph.py
 │   │       ├── completeness.py
@@ -616,7 +645,7 @@ LexTwin AI/
 │   │   ├── build_contractnli_playbook.py
 │   │   └── generate_samples.py       #   Generates the synthetic sample MSA/SOW PDFs
 │   │
-│   ├── tests/                        # pytest suite (208 tests)
+│   ├── tests/                        # pytest suite (237 tests)
 │   ├── requirements.txt
 │   ├── pytest.ini
 │   └── .env.example
@@ -627,21 +656,29 @@ LexTwin AI/
 │   │   │   ├── UploadPage.tsx        #   Upload MSA/SOW, pick a pair to analyze
 │   │   │   ├── WorkspacePage.tsx     #   Main dashboard: Risks / Graph / Obligations / Audit tabs
 │   │   │   ├── DocumentView.tsx      #   Single-document clause viewer
-│   │   │   └── PlaybookPage.tsx      #   Topic rule editor + reference category browser
+│   │   │   ├── PlaybookPage.tsx      #   Topic rule editor (admin-only) + reference category browser
+│   │   │   ├── LoginPage.tsx         #   Email/password sign in + sign up
+│   │   │   ├── AccountPage.tsx       #   Own profile + the bootstrap-first-admin flow
+│   │   │   └── ManageUsersPage.tsx   #   Admin-only: list users, assign roles
 │   │   ├── components/
-│   │   │   ├── DependencyGraph.tsx   #   React Flow graph rendering
+│   │   │   ├── DependencyGraph.tsx   #   React Flow graph rendering (dagre layout)
 │   │   │   ├── ClauseCard.tsx        #   Clause detail + breadcrumb
 │   │   │   ├── RiskFlagsList.tsx / RiskDetailPanel.tsx
 │   │   │   ├── ObligationsPanel.tsx
-│   │   │   ├── AuditTrailPanel.tsx
+│   │   │   ├── AuditTrailPanel.tsx   #   Approve/reject controls gated to the 'approver' role
 │   │   │   ├── ChatPanel.tsx         #   Chat with Contract UI + citation chips
-│   │   │   └── DiffView.tsx          #   Renders redline diff_markdown
+│   │   │   ├── DiffView.tsx          #   Renders redline diff_markdown
+│   │   │   └── ProtectedRoute.tsx    #   Redirects to /login if unauthenticated, or a role-gate message
+│   │   ├── contexts/
+│   │   │   └── AuthContext.tsx       #   Firebase Auth state, login/signup/logout, role from ID token claims
 │   │   ├── lib/
 │   │   │   ├── riskFlags.ts          #   Client-side risk-flag aggregation
-│   │   │   └── breadcrumb.ts         #   Section-hierarchy breadcrumb builder
-│   │   ├── api/client.ts             #   Typed axios wrapper for every backend endpoint
+│   │   │   ├── breadcrumb.ts         #   Section-hierarchy breadcrumb builder
+│   │   │   └── firebase.ts           #   Firebase Web SDK init (Auth only -- no Firestore client access)
+│   │   ├── api/client.ts             #   Typed axios wrapper for every backend endpoint (attaches the ID token)
 │   │   └── types/                    #   TypeScript mirrors of every backend Pydantic model
 │   ├── package.json
+│   ├── .env.example                  #   Firebase Web config template (see Environment Variables)
 │   └── vite.config.ts
 │
 ├── data/                             # Raw reference datasets (gitignored — see Installation)
@@ -670,7 +707,7 @@ LexTwin AI/
 | Node.js | 18+ | 23.4.0 used in development |
 | npm | 9+ | ships with Node |
 | **No AI provider API key needed by default.** | — | Contradiction detection, redlining, and Chat with Contract's answer synthesis run on a **local LLM** (Qwen2.5-7B-Instruct via `llama-cpp-python`) by default — no key, no account, no external network call at inference time. An optional Gemini provider is also supported (`AI_PROVIDER=gemini`) for faster responses if you bring your own API key — see [Installation step 5](#5-choose-an-ai-provider-local-default-or-gemini). |
-| A Firebase project | optional | app runs fully functional against a local-disk store with `USE_FIREBASE=false` |
+| A Firebase project with **Authentication** enabled | **required** | there is no unauthenticated path into the app (see [feature 16](#16-authentication--role-based-access-control)) — this is required regardless of `USE_FIREBASE`, which only controls whether *data* (documents, audit trail, playbook) lives in real Firestore or a local-disk fallback |
 | A C++ build toolchain (CMake + MSVC/gcc/clang) | only if no prebuilt `llama-cpp-python` wheel matches your platform/Python version | `pip install` falls back to compiling from source in that case — took ~12 minutes on this project's dev machine. Prebuilt wheels exist for common platform/Python combinations, so most installs won't need this. |
 | **~8GB+ free RAM recommended** | — | The local LLM (Qwen2.5-7B, ~3.8GB GGUF file) plus the separate embedding model used by Chat with Contract (~1.3GB) are both loaded into the backend process's memory. On a memory-constrained machine (e.g. 16GB total RAM with an IDE and browser also open), running both models at once can be tight — see [Troubleshooting](#troubleshooting) if the backend process exits unexpectedly under load. |
 | ~6GB free disk + network for first run | — | The local LLM's GGUF file (~3.8GB) and the `BAAI/bge-large-en-v1.5` embedding model (~1.3GB, via `sentence-transformers`/`faiss-cpu`, which also pull in a CPU-only PyTorch build) are both downloaded once from Hugging Face Hub on first use and cached locally after that — entirely on-machine, no API key for either. |
@@ -716,16 +753,22 @@ cd ../frontend
 npm install
 ```
 
-### 4. (Optional) Configure Firebase
+### 4. Configure Firebase
 
-The app runs fully functional **without** Firebase — with `USE_FIREBASE=false` (the default), it transparently falls back to a local JSON file store under `backend/local_data/`, so you can develop, run every feature, and run the full test suite with zero cloud setup.
+**Important distinction, since feature 16 added authentication: Firebase itself now splits into a required part and an optional part.**
 
-To use real Firestore instead:
+**Firebase Authentication — required.** There is no unauthenticated path into this app anymore (see [feature 16](#16-authentication--role-based-access-control)) — every route requires a verified Firebase ID token, so you need a real Firebase project with Authentication enabled just to sign in and use the app at all, regardless of `USE_FIREBASE`.
+
+**Firestore — still optional, unchanged from before.** With `USE_FIREBASE=false` (the default), *data storage* (documents, audit trail, playbook config) transparently falls back to a local JSON file store under `backend/local_data/`, so you can develop and run the full test suite with zero Firestore setup. This setting has no effect on Authentication.
+
+Setup:
 
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com).
-2. Enable **Firestore Database** (Native mode). Cloud Storage is **not** required — raw uploaded files are always kept on local disk regardless (see [Firebase Architecture](#-firebase-architecture)).
-3. Project Settings → **Service Accounts** → *Generate new private key* → save the downloaded JSON as `backend/firebase-credentials.json` (already covered by `.gitignore` — never commit this file).
-4. In `backend/.env`, set `USE_FIREBASE=true`.
+2. **Authentication → Sign-in method → enable Email/Password.** This is required, one-time, and must be done in the console — there's no API for it.
+3. **Authentication → (top of page) → your Web app.** If none exists yet, Project Settings → General → Your apps → Add app → **Web**. Copy the resulting `apiKey`, `authDomain`, `projectId`, `appId` into `frontend/.env` (copy from `frontend/.env.example`) — see [Environment Variables](#-environment-variables) for exactly which four values.
+4. Project Settings → **Service Accounts** → *Generate new private key* → save the downloaded JSON as `backend/firebase-credentials.json` (already covered by `.gitignore` — never commit this file). This is required for Authentication too (the backend verifies ID tokens via the Admin SDK, same credential Firestore uses).
+5. (Optional) Enable **Firestore Database** (Native mode) if you want real Firestore instead of the local-JSON fallback for *data*, and set `USE_FIREBASE=true` in `backend/.env`. Cloud Storage is **not** required either way — raw uploaded files are always kept on local disk (see [Firebase Architecture](#-firebase-architecture)).
+6. **First run:** sign up for an account in the app's login page, then visit `/account` and click "Become the first admin" — this only works while zero admins exist yet (see [feature 16](#16-authentication--role-based-access-control)'s bootstrap flow). Every other account after that defaults to `reviewer` until an admin assigns a different role from `/admin/users`.
 
 ### 5. Choose an AI provider: local (default) or Gemini
 
@@ -868,7 +911,16 @@ MAX_UPLOAD_MB=25
 
 > **Secrets discipline:** `GEMINI_API_KEY` only ever belongs in `backend/.env` (already gitignored). Never commit it, never paste it into a chat, issue, commit message, or PR — and if one ever ends up somewhere it shouldn't, treat it as compromised and rotate it immediately in [Google AI Studio](https://aistudio.google.com/apikey), regardless of whether it was actually used.
 
-> **No frontend `.env` is required.** The frontend talks to the backend exclusively through a same-origin `/api` proxy configured in `vite.config.ts` — there is no Firebase Web SDK config and no API keys ever reach the browser (see [Security](#-security)).
+> **A frontend `.env` is now required, for Firebase Auth specifically.** Everything else still talks to the backend through the same-origin `/api` proxy in `vite.config.ts`, and no AI provider key of any kind ever reaches the browser — but since feature 16 added Firebase Authentication, the frontend now needs its own Firebase Web config to let a user sign in at all. Copy `frontend/.env.example` to `frontend/.env` and fill in the values from your Firebase project console (Project Settings → General → Your apps → Web app):
+>
+> | Variable | Description |
+> |---|---|
+> | `VITE_FIREBASE_API_KEY` | Firebase Web API key. Not a secret in the traditional sense — it identifies the project; access is enforced by Firebase Auth + the backend's ID-token verification, not by hiding this value. |
+> | `VITE_FIREBASE_AUTH_DOMAIN` | Usually `<project-id>.firebaseapp.com`. |
+> | `VITE_FIREBASE_PROJECT_ID` | Your Firebase project ID. |
+> | `VITE_FIREBASE_APP_ID` | The Web app's ID from the same console page. |
+>
+> You'll also need to **enable the Email/Password sign-in provider** in the Firebase console (Authentication → Sign-in method) and **register a Web app** in the same project (Project Settings → General → Your apps → Add app → Web) to get the four values above — both are one-time, manual console steps with no API to do them programmatically. See [Installation step 4](#4-optional-configure-firebase), which now covers this alongside Firestore setup.
 
 ---
 
@@ -906,7 +958,16 @@ npm run preview    # local preview of the production build
 docker compose up --build
 ```
 
-Then open **http://localhost:5173**. This runs two containers — `backend` (FastAPI + the local LLM, port 8000) and `frontend` (an nginx-served static build that reverse-proxies `/api/*` to `backend`, port 5173→80) — with `USE_FIREBASE=false` (local-disk storage) and `AI_PROVIDER=local` (the config default) so it works with zero external setup. Two named volumes persist state across restarts: `backend_local_data` (uploaded documents) and `hf_cache` (the downloaded GGUF + embedding models, so you don't redownload several GB every time you restart the container). To use Gemini instead, add `AI_PROVIDER=gemini` and `GEMINI_API_KEY=...` under `backend`'s `environment:` in `docker-compose.yml` (never commit a real key there).
+Then open **http://localhost:5173**. This runs two containers — `backend` (FastAPI + the local LLM, port 8000) and `frontend` (an nginx-served static build that reverse-proxies `/api/*` to `backend`, port 5173→80) — with `USE_FIREBASE=false` (local-disk storage) and `AI_PROVIDER=local` (the config default). Two named volumes persist state across restarts: `backend_local_data` (uploaded documents) and `hf_cache` (the downloaded GGUF + embedding models, so you don't redownload several GB every time you restart the container). To use Gemini instead, add `AI_PROVIDER=gemini` and `GEMINI_API_KEY=...` under `backend`'s `environment:` in `docker-compose.yml` (never commit a real key there).
+
+> **Firebase config is required before the frontend image will let anyone sign in.** Since [feature 16](#16-authentication--role-based-access-control) added authentication, the frontend's static build needs the four `VITE_FIREBASE_*` values baked in *at build time* — create a `.env` file at the **repo root** (not `frontend/.env`, which is for the plain `npm run dev` path) containing:
+> ```dotenv
+> VITE_FIREBASE_API_KEY=...
+> VITE_FIREBASE_AUTH_DOMAIN=...
+> VITE_FIREBASE_PROJECT_ID=...
+> VITE_FIREBASE_APP_ID=...
+> ```
+> `docker compose` substitutes these into `frontend.build.args` automatically (see `docker-compose.yml`). You'll also still need to enable the Email/Password sign-in provider in the Firebase console — see [Installation step 4](#4-configure-firebase).
 
 > **Memory note:** Docker Desktop's default memory limit (often 2-4GB on Windows/Mac) is not enough for this project's local models (~3.8GB LLM + ~1.3GB embedding model resident at once — see [Performance](#-performance)). Increase it in Docker Desktop's settings (Resources → Memory) to at least 8GB before running this.
 >
@@ -1459,20 +1520,28 @@ Embedding/vector search **always run entirely locally**, regardless of `AI_PROVI
 
 ```mermaid
 flowchart TB
-    subgraph Backend["FastAPI Backend (server-side only)"]
+    subgraph Client["Browser"]
+        WEBAUTH["Firebase Auth Web SDK\n(login/signup only --\nno Firestore access)"]
+    end
+    subgraph Backend["FastAPI Backend (server-side)"]
         ADMIN["Firebase Admin SDK\n(firebase-admin Python package)"]
     end
     subgraph Firebase["Firebase Project"]
+        AUTH[("Firebase Authentication\nusers + custom-claim roles")]
         FS[("Firestore\ndocuments · audit_trail\nplaybook_config")]
     end
+    WEBAUTH -->|"sign in / sign up"| AUTH
+    WEBAUTH -->|"ID token, every API request"| Backend
+    Backend -->|"verify_id_token()"| AUTH
     ADMIN -->|"service-account credential,\nbypasses security rules"| FS
-    Backend -->|"HTTP/JSON API"| Frontend["React Frontend\n(never talks to Firebase directly)"]
+    Backend -->|"HTTP/JSON API"| Client
 ```
 
-- **Authentication.** **Not implemented.** There is no Firebase Authentication integration and no user accounts — the app is currently single-tenant, intended for local/demo use. See [Security](#-security) and [Roadmap](#-future-enhancements--roadmap).
-- **Firestore.** The only Firebase product in use. Accessed exclusively server-side via the **Admin SDK** (`firebase-admin`), authenticated with a service-account key — never the client-side Firebase Web SDK, and no Firebase config of any kind ships to the browser.
+- **Authentication.** Firebase Authentication (email/password), verified server-side on every request. The browser talks to Firebase Auth directly (via the Firebase Web SDK) *only* to sign in/sign up and obtain an ID token — it still never talks to Firestore directly. Every backend route requires a valid ID token (`app/auth/__init__.py`'s `get_current_user`); there is no unauthenticated endpoint left. See [feature 16](#16-authentication--role-based-access-control) and [Security](#-security).
+- **Roles.** Three roles — `reviewer`, `approver`, `admin` — stored as Firebase **custom claims** on the user's account (not a separate Firestore `users` collection), set via the Admin SDK and read directly out of the already-verified ID token, so authorizing a request never needs an extra database read.
+- **Firestore.** Still the only *data* product in use, accessed exclusively server-side via the **Admin SDK**, authenticated with a service-account key — the frontend has no direct Firestore access at all, with or without a user logged in.
 - **Storage.** **Not used.** Cloud Storage for Firebase requires the paid Blaze plan; raw uploaded files are kept on local disk instead (see [Database Design](#-database-design)). Firestore itself remains on the free Spark plan.
-- **Security Rules.** **Not applicable in the current architecture.** Firestore Security Rules govern *client-side* SDK access; since the frontend never talks to Firestore directly (all access is server-side via the trusted Admin SDK, which bypasses rules by design), there are no rules to configure today. This changes the moment a client-side SDK or public API surface is introduced — see [Security](#-security).
+- **Security Rules.** **Still not applicable to Firestore specifically.** Firestore Security Rules govern *client-side* SDK access to Firestore; since the frontend still never talks to Firestore directly (only to Firebase Auth), there are no Firestore rules to configure. Firebase Auth itself doesn't use this rules mechanism — access control there is the backend's `require_role()` checks, not a rules file.
 - **Collections.** `documents`, `audit_trail`, `playbook_config` — see [Database Design](#-database-design) for the full schema.
 
 ---
@@ -1483,10 +1552,10 @@ An honest accounting of what's in place and what isn't:
 
 | Area | Current state |
 |---|---|
-| **Authentication** | Not implemented. No login, no user accounts, no session management. Intended for local/demo/single-tenant use today. |
-| **Authorization** | Not applicable without authentication — every API endpoint is currently open to whoever can reach the backend process. |
+| **Authentication** | Firebase Authentication (email/password). Every backend route requires a verified Firebase ID token (`app/auth/__init__.py`'s `get_current_user`) — there is no unauthenticated endpoint left. See [feature 16](#16-authentication--role-based-access-control). |
+| **Authorization** | Role-based, three tiers (`reviewer` < `approver` < `admin`), cumulative. Enforced server-side via `require_role()` on specific routes (recording an audit decision needs `approver`+; editing the Playbook needs `admin`) — the frontend also hides those controls for lower roles, but that's a UX convenience, not the actual boundary. |
 | **Secrets management** | `.env` (gitignored) for the Firebase config path and, if `AI_PROVIDER=gemini`, `GEMINI_API_KEY`. Under the default local provider there is no AI provider API key at all. `firebase-credentials.json` (gitignored) for the service-account key. None of these are ever sent to the frontend. **A real key must never be pasted into chat, a commit, an issue, or a PR** — treat any key that ends up somewhere it shouldn't as compromised and rotate it immediately, regardless of whether it was actually used. |
-| **Firebase access model** | Server-side only via the Admin SDK with a service-account credential — the frontend has zero direct Firebase access, so there is no client-side attack surface on Firestore. |
+| **Firebase access model** | Split by product: **Firestore** is server-side only via the Admin SDK with a service-account credential — the frontend has zero direct Firestore access, so there is no client-side attack surface on it. **Firebase Auth** is the one exception — the frontend talks to it directly (Firebase Web SDK) to sign in/sign up, since that's what Firebase Auth is designed for; it never grants Firestore access on its own, only an ID token the backend independently verifies. |
 | **AI provider data exposure** | Under the default local provider, contradiction detection, redlining, and Chat with Contract's answer synthesis all run locally via `llama-cpp-python` — clause text (which may be confidential contract content) never leaves the machine running the backend. Switching to `AI_PROVIDER=gemini` sends that same clause text to Google's API instead — an explicit, visible tradeoff you opt into, not a hidden default. |
 | **Prompt-injection exposure** | Both providers use **structured output** (the local model's grammar-constrained `response_format={"type": "json_object", "schema": ...}`, Gemini's `response_schema=<PydanticModel>`) with a narrow, fixed system prompt and a bounded input (one or two clause texts). This substantially limits — though does not formally eliminate — the blast radius of adversarial text embedded in a clause: even a successfully "injected" response is still forced through the same fixed JSON schema before it can reach the frontend. Note that the local provider's grammar constraints enforce JSON *shape* (valid structure, required fields, correct types), not numeric-range semantics — a defensive Pydantic validator normalizes fields like `confidence` for exactly this gap (see `app/services/ai_schemas.py`). |
 | **Hallucination mitigation** | The [missing-reference refusal guardrail](#6-missing-reference-refusal-guardrail) is a hard, code-level precondition — a clause is never sent to the configured AI provider for contradiction analysis if a document it structurally depends on is absent from the upload set. This is enforced before any API/inference call is constructed, not policed after the fact. |
@@ -1509,7 +1578,7 @@ See [Roadmap](#-future-enhancements--roadmap) for authentication, authorization,
 | **Caching** | The multi-source reference library (`app/playbook/load_playbooks()`) is loaded once and memoized in-process (`functools.lru_cache`) — no repeated disk reads across requests. The local LLM and embedding model are each loaded once (lazily, on first use) and reused for the life of the process, rather than reloaded per request. No response-level HTTP caching yet. |
 | **Async I/O** | The upload endpoint is `async def`; most other endpoints are synchronous FastAPI handlers (appropriate given they're CPU-bound regex/graph work, not I/O-bound). |
 | **Streaming** | Not implemented — local model responses are awaited in full before returning, appropriate for structured-output calls that must be schema-validated as a whole rather than rendered token-by-token. |
-| **Test suite runtime** | 208 tests total. The default suite (`slow`-marked tests excluded via `pytest.ini`) runs in well under a minute. The full suite — including real-contract-parsing, real-embedding-model, and real-local-LLM-inference tests — runs in roughly 4 minutes, dominated by the local model actually generating a contradiction judgment against real sample contracts. |
+| **Test suite runtime** | 237 tests total. The default suite (`slow`-marked tests excluded via `pytest.ini`, 226 tests) runs in well under a minute. The full suite — including real-contract-parsing, real-embedding-model, and real-local-LLM-inference tests (11 more) — runs in roughly 4 minutes, dominated by the local model actually generating a contradiction judgment against real sample contracts. |
 | **Graph rendering** | React Flow handles moderate node/edge counts (tens to low hundreds) smoothly client-side; not yet load-tested against very large multi-hundred-clause contract sets. |
 
 All of the above (local inference cost, memory footprint, concurrent-request serialization) is specific to the **default local provider**. Switching to `AI_PROVIDER=gemini` trades those costs for a hosted API round trip instead — no multi-minute local inference, no multi-GB resident model, no need to serialize concurrent requests through a single local context — at the cost of needing your own API key and sending clause text to Google's servers (see [Security](#-security)).
@@ -1557,8 +1626,8 @@ Ideas below are genuinely **not built yet** — this section exists precisely so
 9. **AI Contract Detective** — a guided, conversational investigation mode that proactively surfaces anomalies rather than requiring the reviewer to open each tab.
 10. **Hidden risk detector** — pattern-based detection of risk categories beyond today's circular-reference / override-conflict / missing-reference / contradiction set (e.g. unusual indemnification carve-outs, silently one-sided termination rights).
 11. **Multi-SOW analysis** — comparing one governing MSA against *all* of its SOWs in a single pass, with cross-SOW consistency checks.
-12. **User authentication & authorization** (Firebase Auth or equivalent) — real user accounts, per-organization data isolation, and a verified `reviewer` identity in the audit trail instead of free text.
-13. **Role-based access control** — distinct permissions for reviewers, approvers, and administrators.
+12. ~~User authentication & authorization~~ — **done**, see [feature 16](#16-authentication--role-based-access-control). Firebase Auth (email/password), every endpoint requires a verified identity, `reviewer` in the audit trail is now that verified identity instead of free text. Still not done: per-organization data isolation (the app remains single-tenant — any authenticated user can see any document pair, roles gate *actions*, not *data visibility*), OAuth sign-in, email verification/password reset flows.
+13. ~~Role-based access control~~ — **done**, see [feature 16](#16-authentication--role-based-access-control). Three cumulative roles (reviewer/approver/admin) via Firebase custom claims, enforced server-side on the two actions that need more than "logged in" (recording an audit decision, editing the Playbook).
 14. **Rate limiting** on the API layer, independent of the Anthropic SDK's own retry/backoff.
 15. **Response caching** for repeated graph/completeness/contradiction analyses of an unchanged document pair.
 16. **Async/streaming AI provider calls** for lower perceived latency on redline generation.

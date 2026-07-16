@@ -6,6 +6,10 @@ PyMuPDF==1.24.10
 python-docx==1.1.2
 networkx==3.3
 diff-match-patch==20230430
+# Powers both Firestore (data storage, app/firebase.py) and Firebase
+# Authentication (identity + role verification, app/auth/__init__.py) --
+# one package, two Firebase products, both via the same service-account
+# credential.
 firebase-admin==6.5.0
 
 # Local LLM (contradiction detection, redlining, Chat with Contract answer

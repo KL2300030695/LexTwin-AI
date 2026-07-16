@@ -234,12 +234,20 @@ export default function UploadPage() {
           <h1 className="mt-1 font-serif text-2xl font-medium text-ink sm:text-3xl">Contract &amp; SOW Risk Analyzer</h1>
           <p className="mt-1.5 text-sm text-slate-body sm:text-base">Upload a governing MSA and a SOW to begin analysis.</p>
         </div>
-        <Link
-          to="/playbook"
-          className="inline-flex shrink-0 items-center self-start rounded-sm border border-ledger px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ledger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-        >
-          Manage Playbook
-        </Link>
+        <div className="flex shrink-0 items-center gap-2 self-start">
+          <Link
+            to="/playbook"
+            className="inline-flex items-center rounded-sm border border-ledger px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ledger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+          >
+            Manage Playbook
+          </Link>
+          <Link
+            to="/account"
+            className="inline-flex items-center rounded-sm border border-ledger px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ledger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+          >
+            Account
+          </Link>
+        </div>
       </div>
 
       <section className="mt-8">

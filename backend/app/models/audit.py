@@ -57,5 +57,9 @@ class AuditEntryCreate(BaseModel):
 
 
 class AuditDecisionUpdate(BaseModel):
+    """No `reviewer` field here on purpose: who decided is now derived
+    server-side from the caller's verified Firebase identity (see
+    app/routers/audit.py), not a client-supplied free-text string a caller
+    could put any name into."""
+
     decision: AuditDecision
-    reviewer: str | None = None

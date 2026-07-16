@@ -9,8 +9,22 @@ import type { ReferenceCategory, TopicRule } from '../types/playbook'
 import type { Obligation } from '../types/obligation'
 import type { ReportRequest } from '../types/report'
 import type { ChatRequest, ChatResponse } from '../types/chat'
+import type { Role, UserProfile } from '../types/user'
+import { firebaseAuth } from '../lib/firebase'
 
 const api = axios.create({ baseURL: '/api' })
+
+// Every backend route requires a verified Firebase ID token (see
+// app/auth/__init__.py's get_current_user) -- attach it here once rather
+// than threading it through every individual API function below.
+api.interceptors.request.use(async (config) => {
+  const user = firebaseAuth.currentUser
+  if (user) {
+    const token = await user.getIdToken()
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 export async function uploadDocument(file: File, docType: DocType): Promise<ParsedDocument> {
   const form = new FormData()
@@ -81,12 +95,11 @@ export async function createAuditEntry(payload: AuditEntryCreate): Promise<Audit
   return data
 }
 
-export async function decideAuditEntry(
-  entryId: string,
-  decision: AuditDecision,
-  reviewer?: string,
-): Promise<AuditEntry> {
-  const { data } = await api.post<AuditEntry>(`/audit/entries/${entryId}/decision`, { decision, reviewer })
+export async function decideAuditEntry(entryId: string, decision: AuditDecision): Promise<AuditEntry> {
+  // No `reviewer` param -- who decided is derived server-side from the
+  // caller's verified Firebase identity (see app/routers/audit.py), not
+  // something the client supplies.
+  const { data } = await api.post<AuditEntry>(`/audit/entries/${entryId}/decision`, { decision })
   return data
 }
 
@@ -122,5 +135,25 @@ export async function generateReport(payload: ReportRequest): Promise<Blob> {
 
 export async function askChat(payload: ChatRequest): Promise<ChatResponse> {
   const { data } = await api.post<ChatResponse>('/chat/ask', payload)
+  return data
+}
+
+export async function getMyProfile(): Promise<UserProfile> {
+  const { data } = await api.get<UserProfile>('/auth/me')
+  return data
+}
+
+export async function bootstrapFirstAdmin(): Promise<UserProfile> {
+  const { data } = await api.post<UserProfile>('/auth/bootstrap-admin')
+  return data
+}
+
+export async function listUsers(): Promise<UserProfile[]> {
+  const { data } = await api.get<UserProfile[]>('/auth/users')
+  return data
+}
+
+export async function setUserRole(uid: string, role: Role): Promise<UserProfile> {
+  const { data } = await api.put<UserProfile>(`/auth/users/${uid}/role`, { role })
   return data
 }

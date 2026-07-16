@@ -17,7 +17,19 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      # Firebase Web config is baked into the static build at image-build
+      # time (see frontend/Dockerfile) -- docker compose substitutes these
+      # from a .env file at the REPO ROOT (not frontend/.env, which is a
+      # separate file used by the plain `npm run dev` path) or from your
+      # shell's exported environment. Without these set, the built frontend
+      # can't sign anyone in -- see the README's Docker mode section.
+      args:
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID}
     ports:
       - "5173:80"
     depends_on:
