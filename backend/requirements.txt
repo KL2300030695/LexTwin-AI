@@ -34,3 +34,4 @@ pytest==8.3.3
 reportlab==4.2.2
 python-dotenv==1.0.1
 pyarrow==25.0.0  # only needed to run scripts/build_ledgar_playbook.py and build_unfair_tos_playbook.py (reads dataset parquet files); not imported by the running app
+numpy>=2.1.2
