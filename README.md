@@ -106,15 +106,33 @@ This is a narrower, more rigorous scope than "AI that reads your contract and ch
 
 ## 🎬 Demo
 
-> Screenshots and a walkthrough GIF/video will be added here before submission.
+**Sign in**
 
-| | |
-|---|---|
-| **Upload & Pair Selection** | `docs/screenshots/upload.png` *(placeholder)* |
-| **Dependency Graph (Digital Twin)** | `docs/screenshots/graph.png` *(placeholder)* |
-| **Risk Flags Dashboard** | `docs/screenshots/risks.png` *(placeholder)* |
-| **Redline / Diff View** | `docs/screenshots/redline.png` *(placeholder)* |
-| **Full walkthrough** | `docs/demo.gif` *(placeholder)* · `docs/demo-video.mp4` *(placeholder)* |
+![Login page](docs/screenshots/login.png)
+
+**Upload & pair selection**
+
+![Upload and pair selection](docs/screenshots/upload.png)
+
+**Risk Flags Dashboard** — a high-severity cross-document contradiction, a circular reference between two MSA clauses, and the missing-reference refusal guardrail:
+
+![Risk Flags: contradiction detail](docs/screenshots/risk-flags-contradiction.png)
+![Risk Flags: circular reference detail](docs/screenshots/risk-flags-circular-reference.png)
+![Risk Flags: missing reference detail](docs/screenshots/risk-flags-missing-reference.png)
+
+**Dependency Graph (the Digital Twin)** — MSA and SOW clauses laid out in separate stacked bands, with reference/override/cycle edges:
+
+![Dependency graph](docs/screenshots/graph.png)
+
+**Chat with Contract** — a grounded answer with clickable citations back to the source clauses:
+
+![Chat with Contract](docs/screenshots/chat.png)
+
+**Human-in-the-Loop Audit Trail** — an approved redline decision, with the original text, the AI's suggestion, and who approved it:
+
+![Audit trail](docs/screenshots/audit-trail.png)
+
+**Full walkthrough video:** [watch on Google Drive](https://drive.google.com/file/d/16bKMw7w8RpPogDbDJpTU-xM78UPf0QZr/view?usp=sharing) — hosted externally rather than committed directly, since the raw recording (~193MB) exceeds GitHub's per-file size limit for a normal push.
 
 ---
 
@@ -1652,17 +1670,23 @@ Ideas below are genuinely **not built yet** — this section exists precisely so
 
 ## 📸 Screenshots
 
-> To be added before submission — see [Demo](#-demo) for the planned set.
+See the full set rendered inline in [Demo](#-demo) above. Raw files:
 
 ```
 docs/screenshots/
-├── upload.png          (placeholder)
-├── graph.png            (placeholder)
-├── risks.png             (placeholder)
-├── redline.png            (placeholder)
-├── playbook.png             (placeholder)
-└── obligations.png           (placeholder)
+├── login.png                              -- sign in / sign up
+├── upload.png                             -- MSA/SOW upload + pair selection
+├── risk-flags-contradiction.png           -- Risk Flags: high-severity contradiction detail
+├── risk-flags-circular-reference.png      -- Risk Flags: circular reference detail
+├── risk-flags-missing-reference.png       -- Risk Flags: missing-reference guardrail detail
+├── graph.png                              -- Dependency Graph (Digital Twin), MSA/SOW stacked bands
+├── chat.png                               -- Chat with Contract, with citations
+└── audit-trail.png                        -- Human-in-the-Loop Audit Trail, an approved decision
 ```
+
+Not yet captured: a Playbook page screenshot and an Obligations timeline screenshot — both features are fully built and documented above, just not yet screenshotted.
+
+Full walkthrough video: [watch on Google Drive](https://drive.google.com/file/d/16bKMw7w8RpPogDbDJpTU-xM78UPf0QZr/view?usp=sharing) (hosted externally — the raw ~193MB recording exceeds GitHub's per-file push limit).
 
 ---
 

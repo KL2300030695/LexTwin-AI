@@ -41,15 +41,20 @@ def _init_firebase() -> None:
     import firebase_admin
     from firebase_admin import credentials, firestore
 
-    cred_path = Path(settings.FIREBASE_CREDENTIALS_PATH)
-    if not cred_path.exists():
-        raise RuntimeError(
-            f"USE_FIREBASE=true but credentials file not found at {cred_path}. "
-            "Download a service account key from Firebase console and set "
-            "FIREBASE_CREDENTIALS_PATH, or set USE_FIREBASE=false for local mode."
-        )
-    cred = credentials.Certificate(str(cred_path))
-    firebase_admin.initialize_app(cred)
+    if not firebase_admin._apps:
+        # Firebase Auth (app.auth.ensure_admin_app) may have already
+        # initialized the default app on this same process, e.g. via a
+        # login request that reached the backend before any Firestore-backed
+        # endpoint did -- initialize_app() raises if called a second time.
+        cred_path = Path(settings.FIREBASE_CREDENTIALS_PATH)
+        if not cred_path.exists():
+            raise RuntimeError(
+                f"USE_FIREBASE=true but credentials file not found at {cred_path}. "
+                "Download a service account key from Firebase console and set "
+                "FIREBASE_CREDENTIALS_PATH, or set USE_FIREBASE=false for local mode."
+            )
+        cred = credentials.Certificate(str(cred_path))
+        firebase_admin.initialize_app(cred)
     _firestore_client = firestore.client()
 
 

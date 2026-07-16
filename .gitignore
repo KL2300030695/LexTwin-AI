@@ -21,6 +21,11 @@ frontend/.env
 # Claude Code local session/plugin state -- not project content.
 .claude/
 
+# Raw demo captures (loose screenshot filenames + a ~193MB video) -- the
+# renamed, README-referenced copies live in docs/screenshots/ instead; the
+# video is linked from the README via Google Drive rather than committed.
+/Demo/
+
 # OS
 .DS_Store
 Thumbs.db
