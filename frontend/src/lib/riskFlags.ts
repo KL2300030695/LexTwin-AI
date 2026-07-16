@@ -1,4 +1,4 @@
-import type { GraphAnalysis } from '../types/graph'
+import type { GraphAnalysis, GraphEdge } from '../types/graph'
 import type { CompletenessAnalysis } from '../types/completeness'
 import type { ContradictionAnalysis, ContradictionResult } from '../types/contradiction'
 
@@ -21,6 +21,11 @@ export interface RiskFlag {
   description: string
   clauseIds: string[]
   contradiction?: ContradictionResult
+  /** Only set for circular_reference / override_conflict flags -- the exact
+   * edges forming *this* cycle, so the Dependency Graph can highlight the
+   * specific loop a selected flag refers to instead of generically marking
+   * every flagged node the same way regardless of which cycle it's in. */
+  cycleEdges?: GraphEdge[]
 }
 
 const KIND_LABEL: Record<RiskFlagKind, string> = {
@@ -98,6 +103,7 @@ export function buildRiskFlags(
           : 'Circular reference between clauses',
         description: group.edges.map((e) => `${e.source} references ${e.target} ("${e.raw_text}")`).join('; '),
         clauseIds: group.clause_ids,
+        cycleEdges: group.edges,
       })
     }
 

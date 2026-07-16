@@ -250,7 +250,7 @@ export default function WorkspacePage() {
 
         {tab === 'graph' && graph && (
           <div className="space-y-4">
-            <DependencyGraph graph={graph} msaDocId={msaId} sowDocId={sowId} onSelectClause={setSelectedClauseId} />
+            <DependencyGraph graph={graph} msaDocId={msaId} sowDocId={sowId} selectedFlag={selectedFlag} onSelectClause={setSelectedClauseId} />
             {selectedGraphClause && (
               <ClauseCard
                 clause={selectedGraphClause.clause}
