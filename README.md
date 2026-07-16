@@ -124,6 +124,14 @@ This is a narrower, more rigorous scope than "AI that reads your contract and ch
 
 ![Dependency graph](docs/screenshots/graph.png)
 
+**Obligation Timeline** — every extracted obligation with its responsible party, deadline, and source clause:
+
+![Obligations timeline](docs/screenshots/obligations.png)
+
+**Configurable Legal Playbook** — the topic-alignment rules used for contradiction detection, editable from the UI:
+
+![Legal Playbook editor](docs/screenshots/playbook.png)
+
 **Chat with Contract** — a grounded answer with clickable citations back to the source clauses:
 
 ![Chat with Contract](docs/screenshots/chat.png)
@@ -1680,11 +1688,11 @@ docs/screenshots/
 ├── risk-flags-circular-reference.png      -- Risk Flags: circular reference detail
 ├── risk-flags-missing-reference.png       -- Risk Flags: missing-reference guardrail detail
 ├── graph.png                              -- Dependency Graph (Digital Twin), MSA/SOW stacked bands
+├── obligations.png                        -- Obligation Timeline, deadlines + responsible parties
+├── playbook.png                           -- Legal Playbook editor, topic-alignment rules
 ├── chat.png                               -- Chat with Contract, with citations
 └── audit-trail.png                        -- Human-in-the-Loop Audit Trail, an approved decision
 ```
-
-Not yet captured: a Playbook page screenshot and an Obligations timeline screenshot — both features are fully built and documented above, just not yet screenshotted.
 
 Full walkthrough video: [watch on Google Drive](https://drive.google.com/file/d/16bKMw7w8RpPogDbDJpTU-xM78UPf0QZr/view?usp=sharing) (hosted externally — the raw ~193MB recording exceeds GitHub's per-file push limit).
 
