@@ -36,6 +36,15 @@ export async function uploadDocument(file: File, docType: DocType): Promise<Pars
   return data
 }
 
+export async function replaceDocument(docId: string, file: File): Promise<ParsedDocument> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await api.put<ParsedDocument>(`/documents/${docId}/replace`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
 export async function getDocument(docId: string): Promise<ParsedDocument> {
   const { data } = await api.get<ParsedDocument>(`/documents/${docId}`)
   return data

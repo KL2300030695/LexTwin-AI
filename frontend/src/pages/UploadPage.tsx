@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { analyzeGraph, listDocuments, uploadDocument } from '../api/client'
+import { analyzeGraph, listDocuments, replaceDocument, uploadDocument } from '../api/client'
 import type { DocType, ParsedDocument } from '../types/document'
 
 const DOC_TYPE_STYLE: Record<DocType, { tint: string; text: string; border: string; label: string }> = {
@@ -144,6 +144,50 @@ function UploadSlot({
   )
 }
 
+function ReplaceButton({
+  doc,
+  onReplaced,
+}: {
+  doc: ParsedDocument
+  onReplaced: (d: ParsedDocument) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleFile(file: File) {
+    setBusy(true)
+    setError(null)
+    try {
+      const updated = await replaceDocument(doc.doc_id, file)
+      onReplaced(updated)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Replace failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
+      <label className="inline-flex cursor-pointer items-center rounded-sm border border-ledger px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ledger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
+        {busy ? 'Replacing…' : 'Replace'}
+        <input
+          type="file"
+          accept=".pdf,.docx"
+          className="sr-only"
+          disabled={busy}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) void handleFile(file)
+            e.target.value = ''
+          }}
+        />
+      </label>
+      {error && <p className="max-w-[16rem] text-right text-xs text-redline">{error}</p>}
+    </div>
+  )
+}
+
 function PairAnalysisPicker({ documents }: { documents: ParsedDocument[] }) {
   const navigate = useNavigate()
   const msaOptions = useMemo(() => documents.filter((d) => d.doc_type === 'MSA'), [documents])
@@ -221,6 +265,30 @@ export default function UploadPage() {
     setDocuments((prev) => [doc, ...prev.filter((d) => d.doc_id !== doc.doc_id)])
     if (circularCount > 0) {
       setCircularCounts((prev) => new Map(prev).set(doc.doc_id, circularCount))
+    }
+  }
+
+  async function handleReplaced(doc: ParsedDocument) {
+    // Same doc_id as before -- update it in place rather than treating it
+    // like a new upload, so it doesn't jump position in the list.
+    setDocuments((prev) => prev.map((d) => (d.doc_id === doc.doc_id ? doc : d)))
+
+    // The clause structure may have changed, so any previous circular-
+    // reference flag for this doc_id could now be stale -- re-check rather
+    // than leave a warning from the old content showing.
+    setCircularCounts((prev) => {
+      const next = new Map(prev)
+      next.delete(doc.doc_id)
+      return next
+    })
+    try {
+      const graph = await analyzeGraph([doc.doc_id])
+      if (graph.circular_references.length > 0) {
+        setCircularCounts((prev) => new Map(prev).set(doc.doc_id, graph.circular_references.length))
+      }
+    } catch {
+      // Best-effort, same as the upload-time check -- full workspace
+      // analysis will still catch it later.
     }
   }
 
@@ -303,12 +371,15 @@ export default function UploadPage() {
                     </div>
                   </div>
                 </div>
-                <Link
-                  to={`/document/${doc.doc_id}`}
-                  className="inline-flex shrink-0 items-center self-start rounded-sm border border-ledger px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ledger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2 sm:self-auto"
-                >
-                  View
-                </Link>
+                <div className="flex shrink-0 items-start gap-2 self-start sm:self-auto">
+                  <Link
+                    to={`/document/${doc.doc_id}`}
+                    className="inline-flex items-center rounded-sm border border-ledger px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ledger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal-blue focus-visible:ring-offset-2"
+                  >
+                    View
+                  </Link>
+                  <ReplaceButton doc={doc} onReplaced={handleReplaced} />
+                </div>
               </li>
             ))}
           </ul>
