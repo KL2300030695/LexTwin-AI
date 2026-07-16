@@ -1726,8 +1726,12 @@ This project is licensed under the **MIT License** — see [LICENSE](./LICENSE) 
 
 ## 👥 Authors
 
-- **[V.Subhash]** — [@KL2300030695](https://github.com/KL2300030695)
-- **[Teammate Name]** — [github.com/their-handle](https://github.com/their-handle)
+- **Vadaparthi Subhash** — Team Lead — [@KL2300030695](https://github.com/KL2300030695)
+- **Yelishala Jahnavi** — Member
+- **Siva Sai Lahari** — Member
+- **Harsh Nivedan** — Member
+- **Karan Gupta** — Member
+- **Tejas Raj** — Member
 
 *Built for Tech Mahindra's "Code the Future" hackathon — Challenge 4: Contract & SOW Risk Analyzer.*
 
